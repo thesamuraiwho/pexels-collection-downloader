@@ -76,13 +76,21 @@ def create_main_window(settings):
     auth = {'Authorization': str(settings["pexels_api_key"])}
     req = requests.get("https://api.pexels.com/v1/collections", headers=auth)
     total_collections = req.json()["total_results"]
+    print(f"https://api.pexels.com/v1/collections/?per-page={total_collections}")
+
+    # TODO: Ensure all collections are retrieved
+    
     req = requests.get(f"https://api.pexels.com/v1/collections/?per-page={total_collections}", headers=auth)
     print(f"total_collections: {total_collections}")
     collections_json = req.json()["collections"]
     print(collections_json)
     pp.pprint(collections_json)
 
-    layout = [  [sg.Listbox(values=[i['title'] for i in collections_json], size=(30, 12), key='-LIST-', enable_events=True)],
+    layout = [  [sg.Listbox(values=[i['title'] for i in collections_json], size=(30, total_collections), 
+                    key='-LIST-', enable_events=True), 
+                    [sg.Text(f"Description\n{'_'*20}\nTitle: ...\nID: ...\nDescription: ...\nMedia count: 5\nPhotos count: 4\nVideos count: 1", 
+                        size=(20, 10), key="-DESCRIPTION-"), 
+                    sg.Text("Collection preview:", size=(20, 10), key="-PREVIEW-")]],
                 #[sg.Listbox(values=collections_json, size=(24, 12), key='-LIST-', enable_events=True)],
                 #[sg.Listbox(values=sg.theme_list(), size=(20, 12), key='-LIST-', enable_events=True)],
                 [sg.Text('Select download location'), sg.InputText(), sg.FolderBrowse()],
@@ -105,6 +113,7 @@ def main():
         event, values = window.read()
         if event in (sg.WIN_CLOSED, 'Exit'):
             break
+        # window['-LIST-'].update(f"Title: {values}\nID: {values}\nDescription: {values}\nTotal media count: {values}\nPhotos count: {values}\nVideos count: {values}")
         if event == 'Change Settings':
             event, values = create_settings_window(settings).read(close=True)
             if event == 'Save':
