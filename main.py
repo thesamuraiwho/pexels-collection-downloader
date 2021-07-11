@@ -4,27 +4,22 @@
 # Copyright 2020 PySimpleGUI.com
 # Licensed under LGPL-3
 
-
 import PySimpleGUI as sg
 import os
 import requests
 import json
-
 from json import (load as jsonload, dump as jsondump)
 from os import path
 
 import pprint
-
 pp = pprint.PrettyPrinter(indent=4)
-
 THEME = "DarkAmber"
-
-# # Setup settings.json file
-DEFAULT_SETTINGS = {"PEXELS_API_KEY": ""}#, "LAST_SAVE_PATH": ""}
-SETTINGS_FILE = "settings.json"
+# Setup settings.json file
+default_settings = {"pexels_api_key": ""}#, "LAST_SAVE_PATH": ""}
+settings_file = "settings.json"
 
 # "Map" from the settings dictionary keys to the window's element keys
-SETTINGS_KEYS_TO_ELEMENT_KEYS = {"PEXELS_API_KEY": "-PEXELS API KEY-"}#, "LAST_SAVE_PATH": "-LAST SAVE PATH-"}
+SETTINGS_KEYS_TO_ELEMENT_KEYS = {"pexels_api_key": "-PEXELS API KEY-"}#, "LAST_SAVE_PATH": "-LAST SAVE PATH-"}
 
 ##################### Load/Save Settings File #####################
 def load_settings(settings_file, default_settings):
@@ -32,9 +27,9 @@ def load_settings(settings_file, default_settings):
         with open(settings_file, 'r') as f:
             settings = jsonload(f)
     except Exception as e:
-        sg.popup_quick_message(f'exception {e}', 'No settings file found... will create one for you', keep_on_top=True, background_color='red', text_color='white')
+        # sg.popup_quick_message(f'exception {e}', 'No settings file found... will create one for you', keep_on_top=True, background_color='red', text_color='white')
         settings = default_settings
-        save_settings(settings_file, settings, None)
+        # save_settings(settings_file, settings, None)
     return settings
 
 
@@ -49,7 +44,7 @@ def save_settings(settings_file, settings, values):
     with open(settings_file, 'w') as f:
         jsondump(settings, f)
 
-    sg.popup('Settings saved')
+    # sg.popup('Settings saved')
 
 ##################### Make a settings window #####################
 def create_settings_window(settings):
@@ -57,9 +52,9 @@ def create_settings_window(settings):
 
     def TextLabel(text): return sg.Text(text+':', justification='r', size=(15,1))
 
-    layout = [  [sg.Text('Settings', font='Any 15')],
+    layout = [  #[sg.Text('Settings', font='Any 15')],
                 [TextLabel('Pexels API key'), sg.Input(key='-PEXELS API KEY-')],
-               # [TextLabel('Last save path'),sg.Input(key='-LAST SAVE PATH-'), sg.FolderBrowse(target='-LAST SAVE PATH-')],
+                # [TextLabel('Last save path'), sg.Input(key='-LAST SAVE PATH-'), sg.FolderBrowse(target='-LAST SAVE PATH-')],
                 [sg.Button('Save'), sg.Button('Exit')]  ]
 
     window = sg.Window('Settings', layout, keep_on_top=True, finalize=True)
@@ -72,13 +67,24 @@ def create_settings_window(settings):
 
     return window
 
+
 ##################### Main Program Window & Event Loop #####################
 def create_main_window(settings):
     sg.theme(THEME)
 
     # TODO: Check if Pexels API Key is valid
+    auth = {'Authorization': str(settings["pexels_api_key"])}
+    req = requests.get("https://api.pexels.com/v1/collections", headers=auth)
+    total_collections = req.json()["total_results"]
+    req = requests.get(f"https://api.pexels.com/v1/collections/?per-page={total_collections}", headers=auth)
+    print(f"total_collections: {total_collections}")
+    collections_json = req.json()["collections"]
+    print(collections_json)
+    pp.pprint(collections_json)
 
-    layout = [  [sg.Listbox(values=sg.theme_list(), size=(20, 12), key='-LIST-', enable_events=True)],
+    layout = [  [sg.Listbox(values=[i['title'] for i in collections_json], size=(30, 12), key='-LIST-', enable_events=True)],
+                #[sg.Listbox(values=collections_json, size=(24, 12), key='-LIST-', enable_events=True)],
+                #[sg.Listbox(values=sg.theme_list(), size=(20, 12), key='-LIST-', enable_events=True)],
                 [sg.Text('Select download location'), sg.InputText(), sg.FolderBrowse()],
                 [sg.Button('Download'), sg.Button('Exit'), sg.Button('Change Settings')]]
 
@@ -86,10 +92,14 @@ def create_main_window(settings):
 
 
 def main():
-    window, settings = None, load_settings(SETTINGS_FILE, DEFAULT_SETTINGS )
+    window, settings = None, load_settings(settings_file, default_settings)
 
     while True:             # Event Loop
         if window is None:
+            if settings == default_settings:
+                event, values = create_settings_window(settings).read(close=True)
+                if event == 'Save':
+                    save_settings(settings_file, settings, values)
             window = create_main_window(settings)
 
         event, values = window.read()
@@ -100,7 +110,7 @@ def main():
             if event == 'Save':
                 window.close()
                 window = None
-                save_settings(SETTINGS_FILE, settings, values)
+                save_settings(settings_file, settings, values)
     window.close()
 main()
 
