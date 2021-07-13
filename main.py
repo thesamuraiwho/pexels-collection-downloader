@@ -80,7 +80,7 @@ def create_main_window(settings):
 
     # TODO: Ensure all collections are retrieved
     
-    req = requests.get(f"https://api.pexels.com/v1/collections/?per-page={total_collections}", headers=auth)
+    req = requests.get(f"https://api.pexels.com/v1/collections/?per_page={total_collections}", headers=auth)
     print(f"total_collections: {total_collections}")
     collections_json = req.json()["collections"]
     print(collections_json)
@@ -88,15 +88,14 @@ def create_main_window(settings):
 
     layout = [  [sg.Listbox(values=[i['title'] for i in collections_json], size=(30, total_collections), 
                     key='-LIST-', enable_events=True), 
-                    [sg.Text(f"Description\n{'_'*20}\nTitle: ...\nID: ...\nDescription: ...\nMedia count: 5\nPhotos count: 4\nVideos count: 1", 
-                        size=(20, 10), key="-DESCRIPTION-"), 
-                    sg.Text("Collection preview:", size=(20, 10), key="-PREVIEW-")]],
-                #[sg.Listbox(values=collections_json, size=(24, 12), key='-LIST-', enable_events=True)],
-                #[sg.Listbox(values=sg.theme_list(), size=(20, 12), key='-LIST-', enable_events=True)],
+                    # sg.Text(f"Description\n{'-'*20}\nTitle: ...\nID: ...\nDescription: ...\nMedia count: 5\nPhotos count: 4\nVideos count: 1", 
+                    #     size=(20, 10), key="-DESCRIPTION-"), 
+                    sg.MLine(size=(20, 10), key='-DESCRIPTION-'),
+                    sg.Text("Collection preview:", size=(20, 10), key="-PREVIEW-")],
                 [sg.Text('Select download location'), sg.InputText(), sg.FolderBrowse()],
                 [sg.Button('Download'), sg.Button('Exit'), sg.Button('Change Settings')]]
 
-    return sg.Window('Pexels Collection Downloader', layout)
+    return sg.Window('Pexels Collection Downloader', layout), collections_json
 
 
 def main():
@@ -105,17 +104,24 @@ def main():
     while True:             # Event Loop
         if window is None:
             if settings == default_settings:
-                event, values = create_settings_window(settings).read(close=True)
+                event, values, collections_json = create_settings_window(settings).read(close=True)
                 if event == 'Save':
                     save_settings(settings_file, settings, values)
-            window = create_main_window(settings)
+            window, collections_json = create_main_window(settings)
 
         event, values = window.read()
         if event in (sg.WIN_CLOSED, 'Exit'):
             break
-        # window['-LIST-'].update(f"Title: {values}\nID: {values}\nDescription: {values}\nTotal media count: {values}\nPhotos count: {values}\nVideos count: {values}")
+        
+        print(f"\n\n\n{values}")
+        print(collections_json)
+        print(f"{collections_json[0]}")
+        print(f"{[i for i in collections_json if values['-LIST-'][0] == i['title']]}")
+        print(values['-LIST-'][0])
+
+        window['-DESCRIPTION-'].update(f"Description\n{'-'*20}\nTitle: {[i['title'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nID: {[i['id'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nDescription: {[i['description'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nTotal media count: {[i['media_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nPhotos count: {[i['photos_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nVideos count: {[i['videos_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}")
         if event == 'Change Settings':
-            event, values = create_settings_window(settings).read(close=True)
+            event, values, collections_json = create_settings_window(settings, collections_json).read(close=True)
             if event == 'Save':
                 window.close()
                 window = None
