@@ -160,11 +160,18 @@ def main():
         # print(collections_json)
         # print(f"{collections_json[0]}")
         # print(f"{[i for i in collections_json if values['-LIST-'][0] == i['title']]}")
-        print(values['-LIST-'][0])
+        if event == '-LIST-':
+            print(f"event: {event}")
+            print(values)
+            print(values['-LIST-'][0])
+            selection = [i for i in collections_json if values['-LIST-'][0] == i['title']][0]
+            print(selection)
 
-        window['-DESCRIPTION-'].update(f"Description\n{'-'*20}\nTitle: {[i['title'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nID: {[i['id'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nDescription: {[i['description'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nTotal media count: {[i['media_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nPhotos count: {[i['photos_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nVideos count: {[i['videos_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}")
+            window['-DESCRIPTION-'].update(f"Description\n{'-'*20}\nTitle: {selection['title']}\nID: {selection['id']}\nDescription: {selection['description']}\nTotal media count: {selection['media_count']}\nPhotos count: {selection['photos_count']}\nVideos count: {selection['videos_count']}")
+
+        # window['-DESCRIPTION-'].update(f"Description\n{'-'*20}\nTitle: {[i['title'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nID: {[i['id'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nDescription: {[i['description'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nTotal media count: {[i['media_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nPhotos count: {[i['photos_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nVideos count: {[i['videos_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}")
         if event == 'Change Settings':
-            event, values, collections_json = create_settings_window(settings, collections_json).read(close=True)
+            event, values = create_settings_window(settings).read(close=True)
             if event == 'Save':
                 window.close()
                 window = None
