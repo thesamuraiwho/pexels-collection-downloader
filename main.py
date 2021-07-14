@@ -14,12 +14,34 @@ from os import path
 import pprint
 pp = pprint.PrettyPrinter(indent=4)
 THEME = "DarkAmber"
+PER_PAGE = 80
+
 # Setup settings.json file
 default_settings = {"pexels_api_key": ""}#, "LAST_SAVE_PATH": ""}
 settings_file = "settings.json"
 
+
 # "Map" from the settings dictionary keys to the window's element keys
 SETTINGS_KEYS_TO_ELEMENT_KEYS = {"pexels_api_key": "-PEXELS API KEY-"}#, "LAST_SAVE_PATH": "-LAST SAVE PATH-"}
+
+
+def get_json(url, auth):
+    count = 0
+    json = {}
+
+    iterations = 0
+
+    if total_collections / PER_PAGE < 1:
+        iterations = 1
+    else:
+        iterations = int(total_collections / PER_PAGE)
+
+    while count < iterations:
+        req = requests.get(f"{url}?page={count}&per_page={PER_PAGE}", headers=auth)
+        json = {**json, **req.json()}
+        count += 1
+    
+    return json
 
 ##################### Load/Save Settings File #####################
 def load_settings(settings_file, default_settings):
@@ -80,9 +102,28 @@ def create_main_window(settings):
 
     # TODO: Ensure all collections are retrieved
     
-    req = requests.get(f"https://api.pexels.com/v1/collections/?per_page={total_collections}", headers=auth)
+
+    # req = requests.get(f"https://api.pexels.com/v1/collections/?per_page={total_collections}", headers=auth)
+    # print(f"total_collections: {total_collections}")
+    # collections_json = req.json()["collections"]
+    count = 0
+    json = {}
+
+    iterations = 0
+
+    if total_collections / PER_PAGE < 1:
+        iterations = 1
+    else:
+        iterations = int(total_collections / PER_PAGE)
+
+    while count < iterations:
+        req = requests.get(f"https://api.pexels.com/v1/collections/?page={count}&per_page={PER_PAGE}", headers=auth)
+        json = {**json, **req.json()}
+        count += 1
+
     print(f"total_collections: {total_collections}")
-    collections_json = req.json()["collections"]
+    print(json)
+    collections_json = json["collections"]
     print(collections_json)
     pp.pprint(collections_json)
 
@@ -113,10 +154,10 @@ def main():
         if event in (sg.WIN_CLOSED, 'Exit'):
             break
         
-        print(f"\n\n\n{values}")
-        print(collections_json)
-        print(f"{collections_json[0]}")
-        print(f"{[i for i in collections_json if values['-LIST-'][0] == i['title']]}")
+        # print(f"\n\n\n{values}")
+        # print(collections_json)
+        # print(f"{collections_json[0]}")
+        # print(f"{[i for i in collections_json if values['-LIST-'][0] == i['title']]}")
         print(values['-LIST-'][0])
 
         window['-DESCRIPTION-'].update(f"Description\n{'-'*20}\nTitle: {[i['title'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nID: {[i['id'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nDescription: {[i['description'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nTotal media count: {[i['media_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nPhotos count: {[i['photos_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nVideos count: {[i['videos_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}")
