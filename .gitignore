@@ -3,3 +3,6 @@ venv
 recipe*.py
 test*.py
 settings.json
+__pycache__
+build
+dist
