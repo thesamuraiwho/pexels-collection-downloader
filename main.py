@@ -25,7 +25,7 @@ settings_file = "settings.json"
 SETTINGS_KEYS_TO_ELEMENT_KEYS = {"pexels_api_key": "-PEXELS API KEY-"}#, "LAST_SAVE_PATH": "-LAST SAVE PATH-"}
 
 
-def get_json(url, auth):
+def get_json(url, total_collections, auth):
     count = 0
     json = {}
 
@@ -106,20 +106,22 @@ def create_main_window(settings):
     # req = requests.get(f"https://api.pexels.com/v1/collections/?per_page={total_collections}", headers=auth)
     # print(f"total_collections: {total_collections}")
     # collections_json = req.json()["collections"]
-    count = 0
-    json = {}
 
-    iterations = 0
+    json = get_json("https://api.pexels.com/v1/collections/", total_collections, auth)
+    # count = 0
+    # json = {}
 
-    if total_collections / PER_PAGE < 1:
-        iterations = 1
-    else:
-        iterations = int(total_collections / PER_PAGE)
+    # iterations = 0
 
-    while count < iterations:
-        req = requests.get(f"https://api.pexels.com/v1/collections/?page={count}&per_page={PER_PAGE}", headers=auth)
-        json = {**json, **req.json()}
-        count += 1
+    # if total_collections / PER_PAGE < 1:
+    #     iterations = 1
+    # else:
+    #     iterations = int(total_collections / PER_PAGE)
+
+    # while count < iterations:
+    #     req = requests.get(f"https://api.pexels.com/v1/collections/?page={count}&per_page={PER_PAGE}", headers=auth)
+    #     json = {**json, **req.json()}
+    #     count += 1
 
     print(f"total_collections: {total_collections}")
     print(json)
