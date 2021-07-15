@@ -24,6 +24,15 @@ settings_file = "settings.json"
 # "Map" from the settings dictionary keys to the window's element keys
 SETTINGS_KEYS_TO_ELEMENT_KEYS = {"pexels_api_key": "-PEXELS API KEY-"}#, "LAST_SAVE_PATH": "-LAST SAVE PATH-"}
 
+directories = ["thumbnails", "downloads"]
+parent_dir = os.getcwd()
+
+for i in directories:
+    try:
+        os.mkdir(os.path.join(parent_dir, i))
+    except OSError as error:
+        print(error)
+
 
 def get_json(url, total_collections, auth):
     count = 0
@@ -100,28 +109,7 @@ def create_main_window(settings):
     total_collections = req.json()["total_results"]
     print(f"https://api.pexels.com/v1/collections/?per-page={total_collections}")
 
-    # TODO: Ensure all collections are retrieved
-    
-
-    # req = requests.get(f"https://api.pexels.com/v1/collections/?per_page={total_collections}", headers=auth)
-    # print(f"total_collections: {total_collections}")
-    # collections_json = req.json()["collections"]
-
     json = get_json("https://api.pexels.com/v1/collections/", total_collections, auth)
-    # count = 0
-    # json = {}
-
-    # iterations = 0
-
-    # if total_collections / PER_PAGE < 1:
-    #     iterations = 1
-    # else:
-    #     iterations = int(total_collections / PER_PAGE)
-
-    # while count < iterations:
-    #     req = requests.get(f"https://api.pexels.com/v1/collections/?page={count}&per_page={PER_PAGE}", headers=auth)
-    #     json = {**json, **req.json()}
-    #     count += 1
 
     print(f"total_collections: {total_collections}")
     print(json)
@@ -129,16 +117,58 @@ def create_main_window(settings):
     print(collections_json)
     pp.pprint(collections_json)
 
+    image_preview_layout = [[sg.Text('Collection Preview')],
+                            [sg.HorizontalSeparator()],
+                            [sg.Image(key='-IMAGE-')]]
+
     layout = [  [sg.Listbox(values=[i['title'] for i in collections_json], size=(30, total_collections), 
-                    key='-LIST-', enable_events=True), 
-                    # sg.Text(f"Description\n{'-'*20}\nTitle: ...\nID: ...\nDescription: ...\nMedia count: 5\nPhotos count: 4\nVideos count: 1", 
-                    #     size=(20, 10), key="-DESCRIPTION-"), 
+                    key='-LIST-', enable_events=True),
                     sg.MLine(size=(20, 10), key='-DESCRIPTION-'),
-                    sg.Text("Collection preview:", size=(20, 10), key="-PREVIEW-")],
+                    sg.Column(image_preview_layout, size=(20, 10), key="-PREVIEW-")],
                 [sg.Text('Select download location'), sg.InputText(), sg.FolderBrowse()],
                 [sg.Button('Download'), sg.Button('Exit'), sg.Button('Change Settings')]]
 
     return sg.Window('Pexels Collection Downloader', layout), collections_json
+
+
+# Download media
+# Based on code from: https://sempioneer.com/python-for-seo/how-to-download-images-in-python/#Method_One_How_To_Download_Multiple_Images_From_A_Python_List
+
+import enum
+
+class Media(enum.Enum):
+    photo = 1
+    video = 2
+
+def download_media(urls, media_type):
+    broken_urls = []
+    for media in urls:
+        # We can split the file based upon / and extract the last split within the python list below:
+        if media_type == Media.photo:
+            file_name = media.split('/')[-1]
+        else:
+            file_name = media.split('/')[-2] + ".mp4"
+        print(f"This is the file name: {file_name}")
+        # Now let's send a request to the image URL:
+        r = requests.get(media, stream=True)
+        # We can check that the status code is 200 before doing anything else:
+        if r.status_code == 200:
+            # This command below will allow us to write the data to a file as binary:
+            with open(file_name, 'wb') as f:
+                for chunk in r:
+                    f.write(chunk)
+        else:
+            # We will write all of the images back to the broken_images list:
+            broken_urls.append(media)
+    
+    return broken_urls
+
+# image_urls = ['https://images.pexels.com/photos/1790393/pexels-photo-1790393.jpeg',
+#              'https://images.pexels.com/photos/1629014/pexels-photo-1629014.png']
+# video_urls = ['https://www.pexels.com/video/4659817/download',
+#                 'https://www.pexels.com/video/4747162/download']
+# download_media(image_urls, Media.photo)
+# download_media(video_urls, Media.video)
 
 
 def main():
@@ -166,6 +196,13 @@ def main():
             print(f"selection: {selection}")
 
             window['-DESCRIPTION-'].update(f"Description\n{'-'*20}\nTitle: {selection['title']}\nID: {selection['id']}\nDescription: {selection['description']}\nTotal media count: {selection['media_count']}\nPhotos count: {selection['photos_count']}\nVideos count: {selection['videos_count']}")
+
+
+            auth = {'Authorization': str(settings["pexels_api_key"])}
+            req = requests.get(f"https://api.pexels.com/v1/collections/{selection['id']}?per_page=15", headers=auth)
+            print([i['src']['tiny'] for i in req.json()['media']])
+
+
 
         if event == 'Change Settings':
             event, values = create_settings_window(settings).read(close=True)
