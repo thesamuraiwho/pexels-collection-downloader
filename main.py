@@ -153,23 +153,20 @@ def main():
             window, collections_json = create_main_window(settings)
 
         event, values = window.read()
+        
+        print(f"event: {event}")
+        print(values)
+        
         if event in (sg.WIN_CLOSED, 'Exit'):
             break
-        
-        # print(f"\n\n\n{values}")
-        # print(collections_json)
-        # print(f"{collections_json[0]}")
-        # print(f"{[i for i in collections_json if values['-LIST-'][0] == i['title']]}")
+
         if event == '-LIST-':
-            print(f"event: {event}")
-            print(values)
             print(values['-LIST-'][0])
             selection = [i for i in collections_json if values['-LIST-'][0] == i['title']][0]
-            print(selection)
+            print(f"selection: {selection}")
 
             window['-DESCRIPTION-'].update(f"Description\n{'-'*20}\nTitle: {selection['title']}\nID: {selection['id']}\nDescription: {selection['description']}\nTotal media count: {selection['media_count']}\nPhotos count: {selection['photos_count']}\nVideos count: {selection['videos_count']}")
 
-        # window['-DESCRIPTION-'].update(f"Description\n{'-'*20}\nTitle: {[i['title'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nID: {[i['id'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nDescription: {[i['description'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nTotal media count: {[i['media_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nPhotos count: {[i['photos_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}\nVideos count: {[i['videos_count'] for i in collections_json if values['-LIST-'][0] == i['title']][0]}")
         if event == 'Change Settings':
             event, values = create_settings_window(settings).read(close=True)
             if event == 'Save':
@@ -178,36 +175,3 @@ def main():
                 save_settings(settings_file, settings, values)
     window.close()
 main()
-
-
-
-# def main():
-#     sg.theme('DarkAmber')   # Add a touch of color
-#     # All the stuff inside your window.
-#     layout = [  [sg.Text('Enter Pexels API key'), sg.InputText()],
-#                 # [sg.Text('Enter collections URL'), sg.InputText()],
-#                 [sg.Listbox(values=sg.theme_list(), size=(20, 12), key='-LIST-', enable_events=True)],
-#                 [sg.Text('Select download location'), sg.InputText(), sg.FolderBrowse()],
-#                 [sg.Button('Download'), sg.Button('Exit')] ]
-
-#     # Create the Window
-#     window = sg.Window('Pexels Collection Downloader', layout)
-#     # Event Loop to process "events" and get the "values" of the inputs
-#     while True:
-#         event, values = window.read()
-#         if event == sg.WIN_CLOSED or event == 'Cancel': # if user closes window or clicks cancel
-#             break
-#         auth = {'Authorization': str(values[0])}
-#         print('You entered for the Pexels API key', values[0])
-#         print('You entered for the collections URL', values[1])
-#         print('You entered for the download location', values[2])
-#         print((values[1].split('/')[-2]).split('-'))
-
-#         req = requests.get("https://api.pexels.com/v1/collections", headers=auth)
-#         pp.pprint(req.json())
-
-#         # req = requests.get(f"https://api.pexels.com/v1/collections/{}", headers=auth, stream=True)
-
-
-#     window.close()
-# main()
