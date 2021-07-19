@@ -55,16 +55,36 @@ def get_json(url, total_collections, auth):
         print(f"{url}?page={count + 1}&per_page={PER_PAGE}")
         req = requests.get(f"{url}?page={count + 1}&per_page={PER_PAGE}", headers=auth)
         json = {**json, **req.json()}
-        if 'media' in json.keys():
-            pp.pprint([i['id'] for i in json['media']])
-            print(f"iteration {count} media count: {len([i['id'] for i in json['media']])}")
         count += 1
-    
-    if 'media' in json.keys():
-        # pp.pprint(json['media'])
-        print(f"media count: {len([i['id'] for i in json['media']])}")
 
     return json
+
+def get_collection_media(url, total_collections, auth):
+    count = 0
+    json = []
+    iterations = 0
+
+    print(f"url: {url}")
+    print(f"total_collections: {total_collections}")
+    print(f"PER_PAGE: {PER_PAGE}")
+    print(f"check: {total_collections / PER_PAGE < 1}")
+    if total_collections / PER_PAGE < 1:
+        iterations = 1
+    else:
+        iterations = math.ceil(total_collections / PER_PAGE)
+
+    print(f"iterations: {iterations}")
+    while count < iterations:
+        print(f"{url}?page={count + 1}&per_page={PER_PAGE}")
+        req = requests.get(f"{url}?page={count + 1}&per_page={PER_PAGE}", headers=auth)
+        new_json = req.json()['media']
+        json += new_json
+        # print(f"iteration {count} media count: {len(json)}")
+        count += 1
+
+    # print(f"media count: {len(json)}")
+    return json
+
 
 ##################### Load/Save Settings File #####################
 def load_settings(settings_file, default_settings):
@@ -220,15 +240,15 @@ def main():
 
             auth = {'Authorization': str(settings["pexels_api_key"])}
 
-            json = get_json(f"https://api.pexels.com/v1/collections/{selection['id']}", selection['media_count'], auth)
+            # collection_media = get_collection_media(f"https://api.pexels.com/v1/collections/{selection['id']}", selection['media_count'], auth)
             # pp.pprint(json['media'])
-            photos = [i['src']['tiny'] for i in json['media'] if i['type'] == 'Photo']
-            # pp.pprint(photos)
-            print(f"len photos: {len(photos)}")
-            videos = [i['image'] for i in json['media'] if i['type'] == 'Video']
-            # pp.pprint(videos)
-            print(f"len videos: {len(videos)}")
-            print(len([i['id'] for i in json['media']]))
+            # photos = [i['src']['tiny'] for i in collection_media if i['type'] == 'Photo']
+            # # pp.pprint(photos)
+            # print(f"len photos: {len(photos)}")
+            # videos = [i['image'] for i in collection_media if i['type'] == 'Video']
+            # # pp.pprint(videos)
+            # print(f"len videos: {len(videos)}")
+            # print(len([i['id'] for i in collection_media]))
             print(f"selection media count: {selection['media_count']}")
 
             # req = requests.get(f"https://api.pexels.com/v1/collections/{selection['id']}?per_page=15", headers=auth)
