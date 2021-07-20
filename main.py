@@ -206,14 +206,6 @@ def download_media(urls, download_dir, media_type):
     
     return broken_urls
 
-# image_urls = ['https://images.pexels.com/photos/1790393/pexels-photo-1790393.jpeg',
-#              'https://images.pexels.com/photos/1629014/pexels-photo-1629014.png']
-# video_urls = ['https://www.pexels.com/video/4659817/download',
-#                 'https://www.pexels.com/video/4747162/download']
-# download_media(image_urls, Media.photo)
-# download_media(video_urls, Media.video)
-
-
 def main():
     window, settings = None, load_settings(settings_file, default_settings)
 
@@ -258,8 +250,7 @@ def main():
             print(f"selection media count: {len(photos) + len(videos)}")
             pp.pprint(photos)
             pp.pprint(videos)
-        
-        print(values)
+
         if event == '-DOWNLOAD_LOCATION-':
             window['-DOWNLOAD_LOCATION-'].update(values['-DOWNLOAD_LOCATION-'] + "/")
 
