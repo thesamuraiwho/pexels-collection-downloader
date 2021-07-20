@@ -13,7 +13,13 @@ from os import path
 import math
 
 import pprint
+
+# Globals
 pp = pprint.PrettyPrinter(indent=4)
+api_calls = 0
+
+
+# Constants
 THEME = "DarkAmber"
 PER_PAGE = 80
 
@@ -35,9 +41,9 @@ for i in directories:
         print(error)
 
 
-def get_json(url, total_collections, auth):
+def get_collections(url, total_collections, auth):
     count = 0
-    json = {}
+    collections = []
     iterations = 0
 
     print(f"url: {url}")
@@ -54,14 +60,14 @@ def get_json(url, total_collections, auth):
     while count < iterations:
         print(f"{url}?page={count + 1}&per_page={PER_PAGE}")
         req = requests.get(f"{url}?page={count + 1}&per_page={PER_PAGE}", headers=auth)
-        json = {**json, **req.json()}
+        collections += req.json()['collections']
         count += 1
 
-    return json
+    return collections
 
 def get_collection_media(url, total_collections, auth):
     count = 0
-    json = []
+    collection_media = []
     iterations = 0
 
     print(f"url: {url}")
@@ -77,13 +83,18 @@ def get_collection_media(url, total_collections, auth):
     while count < iterations:
         print(f"{url}?page={count + 1}&per_page={PER_PAGE}")
         req = requests.get(f"{url}?page={count + 1}&per_page={PER_PAGE}", headers=auth)
-        new_json = req.json()['media']
-        json += new_json
-        # print(f"iteration {count} media count: {len(json)}")
+        new_collection_media = req.json()['media']
+
+        photos = [i['id'] for i in new_collection_media if i['type'] == 'Photo']
+        print(f"len photos: {len(photos)}")
+        videos = [i['id'] for i in new_collection_media if i['type'] == 'Video']
+        print(f"len videos: {len(videos)}")
+
+        collection_media += new_collection_media
         count += 1
 
     # print(f"media count: {len(json)}")
-    return json
+    return collection_media
 
 
 ##################### Load/Save Settings File #####################
@@ -117,8 +128,7 @@ def create_settings_window(settings):
 
     def TextLabel(text): return sg.Text(text+':', justification='r', size=(15,1))
 
-    layout = [  #[sg.Text('Settings', font='Any 15')],
-                [TextLabel('Pexels API key'), sg.Input(key='-PEXELS API KEY-')],
+    layout = [  [TextLabel('Pexels API key'), sg.Input(key='-PEXELS API KEY-')],
                 # [TextLabel('Last save path'), sg.Input(key='-LAST SAVE PATH-'), sg.FolderBrowse(target='-LAST SAVE PATH-')],
                 [sg.Button('Save'), sg.Button('Exit')]  ]
 
@@ -143,26 +153,25 @@ def create_main_window(settings):
     total_collections = req.json()["total_results"]
     print(f"https://api.pexels.com/v1/collections/?per-page={total_collections}")
 
-    json = get_json("https://api.pexels.com/v1/collections/", total_collections, auth)
+    # json = get_json("https://api.pexels.com/v1/collections/", total_collections, auth)
+    collections = get_collections("https://api.pexels.com/v1/collections/", total_collections, auth)
 
     print(f"total_collections: {total_collections}")
-    print(f"json: {json}")
-    collections_json = json["collections"]
-    print(f"collections_json: {collections_json}")
-    pp.pprint(collections_json)
+    print(f"collections:")
+    pp.pprint(collections)
 
     image_preview_layout = [[sg.Text('Collection Preview')],
                             [sg.HorizontalSeparator()],
                             [sg.Image(key='-IMAGE-')]]
 
-    layout = [  [sg.Listbox(values=[i['title'] for i in collections_json], size=(30, total_collections), 
+    layout = [  [sg.Listbox(values=[i['title'] for i in collections], size=(30, total_collections), 
                     key='-LIST-', enable_events=True),
                     sg.MLine(size=(20, 10), key='-DESCRIPTION-'),
                     sg.Column(image_preview_layout, size=(20, 10), key="-PREVIEW-")],
-                [sg.Text('Select download location'), sg.InputText(), sg.FolderBrowse()],
+                [sg.Text('Select download location'), sg.InputText(key="-DOWNLOAD_LOCATION-", enable_events=True), sg.FolderBrowse()],
                 [sg.Button('Download'), sg.Button('Exit'), sg.Button('Change Settings')]]
 
-    return sg.Window('Pexels Collection Downloader', layout), collections_json
+    return sg.Window('Pexels Collection Downloader', layout), collections
 
 
 # Download media
@@ -174,14 +183,14 @@ class Media(enum.Enum):
     photo = 1
     video = 2
 
-def download_media(urls, media_type):
+def download_media(urls, download_dir, media_type):
     broken_urls = []
     for media in urls:
         # We can split the file based upon / and extract the last split within the python list below:
         if media_type == Media.photo:
-            file_name = media.split('/')[-1]
+            file_name = download_dir + media.split('/')[-1]
         else:
-            file_name = media.split('/')[-2] + ".mp4"
+            file_name = download_dir + media.split('/')[-2] + ".mp4"
         print(f"This is the file name: {file_name}")
         # Now let's send a request to the image URL:
         r = requests.get(media, stream=True)
@@ -211,10 +220,10 @@ def main():
     while True:             # Event Loop
         if window is None:
             if settings == default_settings:
-                event, values, collections_json = create_settings_window(settings).read(close=True)
+                event, values, collections = create_settings_window(settings).read(close=True)
                 if event == 'Save':
                     save_settings(settings_file, settings, values)
-            window, collections_json = create_main_window(settings)
+            window, collections = create_main_window(settings)
 
         event, values = window.read()
         
@@ -226,7 +235,7 @@ def main():
 
         if event == '-LIST-':
             print(values['-LIST-'][0])
-            selection = [i for i in collections_json if values['-LIST-'][0] == i['title']][0]
+            selection = [i for i in collections if values['-LIST-'][0] == i['title']][0]
             print(f"selection: {selection}")
 
             window['-DESCRIPTION-'].update(f"Description\n{'-'*20}\n"
@@ -240,25 +249,24 @@ def main():
 
             auth = {'Authorization': str(settings["pexels_api_key"])}
 
-            # collection_media = get_collection_media(f"https://api.pexels.com/v1/collections/{selection['id']}", selection['media_count'], auth)
-            # pp.pprint(json['media'])
-            # photos = [i['src']['tiny'] for i in collection_media if i['type'] == 'Photo']
-            # # pp.pprint(photos)
-            # print(f"len photos: {len(photos)}")
-            # videos = [i['image'] for i in collection_media if i['type'] == 'Video']
-            # # pp.pprint(videos)
-            # print(f"len videos: {len(videos)}")
-            # print(len([i['id'] for i in collection_media]))
-            print(f"selection media count: {selection['media_count']}")
+            collection_media = get_collection_media(f"https://api.pexels.com/v1/collections/{selection['id']}", selection['media_count'], auth)
+            photos = [i['src']['original'] for i in collection_media if i['type'] == 'Photo']
+            print(f"total photos in {selection['title']}: {len(photos)}")
+            videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
+            
+            print(f"total videos in {selection['title']}: {len(videos)}")
+            print(f"selection media count: {len(photos) + len(videos)}")
+            pp.pprint(photos)
+            pp.pprint(videos)
+        
+        print(values)
+        if event == '-DOWNLOAD_LOCATION-':
+            window['-DOWNLOAD_LOCATION-'].update(values['-DOWNLOAD_LOCATION-'] + "/")
 
-            # req = requests.get(f"https://api.pexels.com/v1/collections/{selection['id']}?per_page=15", headers=auth)
-            # print(f"\n\nrequest for {selection['id']}")
-            # pp.pprint(req.json())
-            # pp.pprint([i['src']['tiny'] for i in req.json()['media'] if i['type'] == 'Photo'])
-            # pp.pprint([i['image'] for i in req.json()['media'] if i['type'] == 'Video'])
-            # pp.pprint([i['src']['tiny'] for i in req.json()['media']])
-
-
+        if event == 'Download':
+            if values['-LIST-']:
+                download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
+                download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
 
         if event == 'Change Settings':
             event, values = create_settings_window(settings).read(close=True)
