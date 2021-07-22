@@ -17,18 +17,16 @@ import pprint
 pp = pprint.PrettyPrinter(indent=4)
 api_calls = 0
 
-
 # Constants
 THEME = "DarkAmber"
 PER_PAGE = 80
 
 # Setup settings.json file
-default_settings = {"pexels_api_key": ""}#, "LAST_SAVE_PATH": ""}
+default_settings = {"pexels_api_key": "", "home": ""}
 settings_file = "settings.json"
 
-
 # "Map" from the settings dictionary keys to the window's element keys
-SETTINGS_KEYS_TO_ELEMENT_KEYS = {"pexels_api_key": "-PEXELS API KEY-"}#, "LAST_SAVE_PATH": "-LAST SAVE PATH-"}
+SETTINGS_KEYS_TO_ELEMENT_KEYS = {"pexels_api_key": "-PEXELS API KEY-", "home": "-HOME-"}
 
 directories = ["thumbnails", "downloads"]
 parent_dir = os.getcwd()
@@ -53,7 +51,7 @@ def download_media(urls, download_dir, media_type):
     for media in urls:
         # We can split the file based upon / and extract the last split within the python list below:
         if media_type == Media.photo:
-            file_name = download_dir + media.split('/')[-1]
+            file_name = download_dir + (media.split('/')[-1]).split("?")[0]
         else:
             file_name = download_dir + media.split('/')[-2] + ".mp4"
         print(f"This is the file name: {file_name}")
@@ -127,6 +125,9 @@ def get_collection_media(url, total_collections, auth):
 
 ##################### Load/Save Settings File #####################
 def load_settings(settings_file, default_settings):
+    # TODO: Check if Pexels API Key is valid
+    # TODO: Check if home path is still valid, ie exists
+
     try:
         with open(settings_file, 'r') as f:
             settings = jsonload(f)
@@ -157,7 +158,7 @@ def create_settings_window(settings):
     def TextLabel(text): return sg.Text(text+':', justification='r', size=(15,1))
 
     layout = [  [TextLabel('Pexels API key'), sg.Input(key='-PEXELS API KEY-')],
-                # [TextLabel('Last save path'), sg.Input(key='-LAST SAVE PATH-'), sg.FolderBrowse(target='-LAST SAVE PATH-')],
+                [TextLabel('Home directory'), sg.Input(key='-HOME-'), sg.FolderBrowse(target='-HOME-')],
                 [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-EXIT-")]  ]
 
     window = sg.Window('Settings', layout, keep_on_top=True, finalize=True)
@@ -174,14 +175,11 @@ def create_settings_window(settings):
 ##################### Main Program Window & Event Loop #####################
 def create_main_window(settings):
     sg.theme(THEME)
-
-    # TODO: Check if Pexels API Key is valid
     auth = {'Authorization': str(settings["pexels_api_key"])}
+    print(f"home: {str(settings['home'])}")
     req = requests.get("https://api.pexels.com/v1/collections", headers=auth)
     total_collections = req.json()["total_results"]
     print(f"https://api.pexels.com/v1/collections/?per-page={total_collections}")
-
-    # json = get_json("https://api.pexels.com/v1/collections/", total_collections, auth)
     collections = get_collections("https://api.pexels.com/v1/collections/", total_collections, auth)
 
     print(f"total_collections: {total_collections}")
@@ -195,7 +193,6 @@ def create_main_window(settings):
     mid_col = [[sg.Text("Collection Description")],
                 [sg.HorizontalSeparator()],
                 [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]]
-                    
     right_col = [[sg.Text('Collection Quality')],
                     [sg.HorizontalSeparator()],
                     [sg.Radio(key="-QUALITY_ORIGINAL-", text="Original", default=True, enable_events=True, group_id=1)],
@@ -208,8 +205,9 @@ def create_main_window(settings):
                     [sg.Radio(key="-QUALITY_TINY-", text="Tiny", enable_events=True, group_id=1)]]
 
     layout = [[ sg.Column(left_col), sg.VSeparator(), sg.Column(mid_col), sg.VSeparator(), sg.Column(right_col)],
-                [sg.Text('Select download location'), sg.InputText(key="-DOWNLOAD_LOCATION-", readonly=True, enable_events=True), 
-                    sg.FolderBrowse(key="-DOWNLOAD_BROWSER-", enable_events=True, initial_folder=None)],
+                [sg.Text('Select download location'), 
+                    sg.InputText(key="-DOWNLOAD_LOCATION-", default_text=str(settings['home']) + '/', readonly=True, enable_events=True), 
+                    sg.FolderBrowse(key="-DOWNLOAD_BROWSER-", target="-DOWNLOAD_LOCATION-", initial_folder=str(settings['home']) + "/")],
                 [sg.Button(button_text='Download', key="-DOWNLOAD-"), sg.Button(button_text='Exit', key="-EXIT-"),
                     sg.Button(button_text='Change Settings', key="-CHANGE_SETTINGS-")]]
 
@@ -221,8 +219,9 @@ def main():
     while True:             # Event Loop
         if window is None:
             if settings == default_settings:
-                event, values, collections = create_settings_window(settings).read(close=True)
-                if event == 'Save':
+                # event, values, collections = create_settings_window(settings).read(close=True)
+                event, values = create_settings_window(settings).read(close=True)
+                if event == '-SAVE-':
                     save_settings(settings_file, settings, values)
             window, collections = create_main_window(settings)
 
@@ -247,18 +246,6 @@ def main():
                                             f"Photos count: {selection['photos_count']}\n"
                                             f"Videos count: {selection['videos_count']}")
 
-
-            # auth = {'Authorization': str(settings["pexels_api_key"])}
-
-            # collection_media = get_collection_media(f"https://api.pexels.com/v1/collections/{selection['id']}", selection['media_count'], auth)
-            # photos = [i['src']['original'] for i in collection_media if i['type'] == 'Photo']
-            # print(f"total photos in {selection['title']}: {len(photos)}")
-            # videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
-            # print(f"total videos in {selection['title']}: {len(videos)}")
-            # print(f"selection media count: {len(photos) + len(videos)}")
-            # pp.pprint(photos)
-            # pp.pprint(videos)
-
         # Click on download browser button
         if event == '-DOWNLOAD_LOCATION-':
             print(event)
@@ -270,22 +257,52 @@ def main():
             if values['-LIST-']:
                 auth = {'Authorization': str(settings["pexels_api_key"])}
                 collection_media = get_collection_media(f"https://api.pexels.com/v1/collections/{selection['id']}", selection['media_count'], auth)
-                photos = [i['src']['original'] for i in collection_media if i['type'] == 'Photo']
+                # photos = [i['src']['original'] for i in collection_media if i['type'] == 'Photo']
+                
+                # Check the selected quality
+                radio_keys = ["-QUALITY_ORIGINAL-",
+                    "-QUALITY_2X-",
+                    "-QUALITY_LARGE-",
+                    "-QUALITY_MEDIUM-",
+                    "-QUALITY_SMALL-",
+                    "-QUALITY_PORTRAIT-",
+                    "-QUALITY_LANDSCAPE-",
+                    "-QUALITY_TINY-"]
+
+                radio_values = ["original",
+                    "large2x",
+                    "large",
+                    "medium",
+                    "small",
+                    "portrait",
+                    "landscape",
+                    "tiny", ]
+                
+                radio_quality = "original"
+
+                for i in range(len(radio_keys)):
+                    if values[radio_keys[i]]:
+                        radio_quality = radio_values[i]
+                
+                print(f"radio_quality: {radio_quality}")
+
+                photos = [i['src'][radio_quality] for i in collection_media if i['type'] == 'Photo']
                 print(f"total photos in {selection['title']}: {len(photos)}")
                 videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
                 print(f"total videos in {selection['title']}: {len(videos)}")
                 print(f"selection media count: {len(photos) + len(videos)}")
-                pp.pprint(photos)
-                pp.pprint(videos)
+                # pp.pprint(photos)
+                # pp.pprint(videos)
                 download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
                 download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
 
         # Click on change settings button
         if event == '-CHANGE_SETTINGS-':
             event, values = create_settings_window(settings).read(close=True)
-            if event == 'Save':
+            if event == '-SAVE-':
                 window.close()
                 window = None
                 save_settings(settings_file, settings, values)
+
     window.close()
 main()
