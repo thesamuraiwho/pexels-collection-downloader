@@ -11,7 +11,6 @@ import json
 from json import (load as jsonload, dump as jsondump)
 from os import path
 import math
-
 import pprint
 
 # Globals
@@ -40,6 +39,37 @@ for i in directories:
     except OSError as error:
         print(error)
 
+# Download media
+# Based on code from: https://sempioneer.com/python-for-seo/how-to-download-images-in-python/#Method_One_How_To_Download_Multiple_Images_From_A_Python_List
+
+import enum
+
+class Media(enum.Enum):
+    photo = 1
+    video = 2
+
+def download_media(urls, download_dir, media_type):
+    broken_urls = []
+    for media in urls:
+        # We can split the file based upon / and extract the last split within the python list below:
+        if media_type == Media.photo:
+            file_name = download_dir + media.split('/')[-1]
+        else:
+            file_name = download_dir + media.split('/')[-2] + ".mp4"
+        print(f"This is the file name: {file_name}")
+        # Now let's send a request to the image URL:
+        r = requests.get(media, stream=True)
+        # We can check that the status code is 200 before doing anything else:
+        if r.status_code == 200:
+            # This command below will allow us to write the data to a file as binary:
+            with open(file_name, 'wb') as f:
+                for chunk in r:
+                    f.write(chunk)
+        else:
+            # We will write all of the images back to the broken_images list:
+            broken_urls.append(media)
+    
+    return broken_urls
 
 def get_collections(url, total_collections, auth):
     count = 0
@@ -56,7 +86,6 @@ def get_collections(url, total_collections, auth):
         iterations = math.ceil(total_collections / PER_PAGE)
 
     print(f"iterations: {iterations}")
-
     while count < iterations:
         print(f"{url}?page={count + 1}&per_page={PER_PAGE}")
         req = requests.get(f"{url}?page={count + 1}&per_page={PER_PAGE}", headers=auth)
@@ -93,7 +122,6 @@ def get_collection_media(url, total_collections, auth):
         collection_media += new_collection_media
         count += 1
 
-    # print(f"media count: {len(json)}")
     return collection_media
 
 
@@ -130,7 +158,7 @@ def create_settings_window(settings):
 
     layout = [  [TextLabel('Pexels API key'), sg.Input(key='-PEXELS API KEY-')],
                 # [TextLabel('Last save path'), sg.Input(key='-LAST SAVE PATH-'), sg.FolderBrowse(target='-LAST SAVE PATH-')],
-                [sg.Button('Save'), sg.Button('Exit')]  ]
+                [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-EXIT-")]  ]
 
     window = sg.Window('Settings', layout, keep_on_top=True, finalize=True)
 
@@ -160,51 +188,32 @@ def create_main_window(settings):
     print(f"collections:")
     pp.pprint(collections)
 
-    image_preview_layout = [[sg.Text('Collection Preview')],
-                            [sg.HorizontalSeparator()],
-                            [sg.Image(key='-IMAGE-')]]
+    left_col = [[sg.Text("Collections")],
+                    [sg.HorizontalSeparator()],
+                    [sg.Listbox(values=[i['title'] for i in collections], size=(30, total_collections), 
+                        key='-LIST-', enable_events=True)]]
+    mid_col = [[sg.Text("Collection Description")],
+                [sg.HorizontalSeparator()],
+                [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]]
+                    
+    right_col = [[sg.Text('Collection Quality')],
+                    [sg.HorizontalSeparator()],
+                    [sg.Radio(key="-QUALITY_ORIGINAL-", text="Original", default=True, enable_events=True, group_id=1)],
+                    [sg.Radio(key="-QUALITY_2X-", text="Large 2x", enable_events=True, group_id=1)],
+                    [sg.Radio(key="-QUALITY_LARGE-", text="Large", enable_events=True, group_id=1)],
+                    [sg.Radio(key="-QUALITY_MEDIUM-", text="Medium", enable_events=True, group_id=1)],
+                    [sg.Radio(key="-QUALITY_SMALL-", text="Small", enable_events=True, group_id=1)],
+                    [sg.Radio(key="-QUALITY_PORTRAIT-", text="Portrait", enable_events=True, group_id=1)],
+                    [sg.Radio(key="-QUALITY_LANDSCAPE-", text="Landscape", enable_events=True, group_id=1)],
+                    [sg.Radio(key="-QUALITY_TINY-", text="Tiny", enable_events=True, group_id=1)]]
 
-    layout = [  [sg.Listbox(values=[i['title'] for i in collections], size=(30, total_collections), 
-                    key='-LIST-', enable_events=True),
-                    sg.MLine(size=(20, 10), key='-DESCRIPTION-'),
-                    sg.Column(image_preview_layout, size=(20, 10), key="-PREVIEW-")],
-                [sg.Text('Select download location'), sg.InputText(key="-DOWNLOAD_LOCATION-", enable_events=True), sg.FolderBrowse()],
-                [sg.Button('Download'), sg.Button('Exit'), sg.Button('Change Settings')]]
+    layout = [[ sg.Column(left_col), sg.VSeparator(), sg.Column(mid_col), sg.VSeparator(), sg.Column(right_col)],
+                [sg.Text('Select download location'), sg.InputText(key="-DOWNLOAD_LOCATION-", readonly=True, enable_events=True), 
+                    sg.FolderBrowse(key="-DOWNLOAD_BROWSER-", enable_events=True, initial_folder=None)],
+                [sg.Button(button_text='Download', key="-DOWNLOAD-"), sg.Button(button_text='Exit', key="-EXIT-"),
+                    sg.Button(button_text='Change Settings', key="-CHANGE_SETTINGS-")]]
 
     return sg.Window('Pexels Collection Downloader', layout), collections
-
-
-# Download media
-# Based on code from: https://sempioneer.com/python-for-seo/how-to-download-images-in-python/#Method_One_How_To_Download_Multiple_Images_From_A_Python_List
-
-import enum
-
-class Media(enum.Enum):
-    photo = 1
-    video = 2
-
-def download_media(urls, download_dir, media_type):
-    broken_urls = []
-    for media in urls:
-        # We can split the file based upon / and extract the last split within the python list below:
-        if media_type == Media.photo:
-            file_name = download_dir + media.split('/')[-1]
-        else:
-            file_name = download_dir + media.split('/')[-2] + ".mp4"
-        print(f"This is the file name: {file_name}")
-        # Now let's send a request to the image URL:
-        r = requests.get(media, stream=True)
-        # We can check that the status code is 200 before doing anything else:
-        if r.status_code == 200:
-            # This command below will allow us to write the data to a file as binary:
-            with open(file_name, 'wb') as f:
-                for chunk in r:
-                    f.write(chunk)
-        else:
-            # We will write all of the images back to the broken_images list:
-            broken_urls.append(media)
-    
-    return broken_urls
 
 def main():
     window, settings = None, load_settings(settings_file, default_settings)
@@ -222,16 +231,16 @@ def main():
         print(f"event: {event}")
         print(values)
         
-        if event in (sg.WIN_CLOSED, 'Exit'):
+        if event in (sg.WIN_CLOSED, '-EXIT-'):
             break
 
+        # Select a collection from the listbox
         if event == '-LIST-':
             print(values['-LIST-'][0])
             selection = [i for i in collections if values['-LIST-'][0] == i['title']][0]
             print(f"selection: {selection}")
 
-            window['-DESCRIPTION-'].update(f"Description\n{'-'*20}\n"
-                                            f"Title: {selection['title']}\n"
+            window['-DESCRIPTION-'].update(f"Title: {selection['title']}\n"
                                             f"ID: {selection['id']}\n"
                                             f"Description: {selection['description']}\n"
                                             f"Total media count: {selection['media_count']}\n"
@@ -239,27 +248,40 @@ def main():
                                             f"Videos count: {selection['videos_count']}")
 
 
-            auth = {'Authorization': str(settings["pexels_api_key"])}
+            # auth = {'Authorization': str(settings["pexels_api_key"])}
 
-            collection_media = get_collection_media(f"https://api.pexels.com/v1/collections/{selection['id']}", selection['media_count'], auth)
-            photos = [i['src']['original'] for i in collection_media if i['type'] == 'Photo']
-            print(f"total photos in {selection['title']}: {len(photos)}")
-            videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
-            
-            print(f"total videos in {selection['title']}: {len(videos)}")
-            print(f"selection media count: {len(photos) + len(videos)}")
-            pp.pprint(photos)
-            pp.pprint(videos)
+            # collection_media = get_collection_media(f"https://api.pexels.com/v1/collections/{selection['id']}", selection['media_count'], auth)
+            # photos = [i['src']['original'] for i in collection_media if i['type'] == 'Photo']
+            # print(f"total photos in {selection['title']}: {len(photos)}")
+            # videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
+            # print(f"total videos in {selection['title']}: {len(videos)}")
+            # print(f"selection media count: {len(photos) + len(videos)}")
+            # pp.pprint(photos)
+            # pp.pprint(videos)
 
+        # Click on download browser button
         if event == '-DOWNLOAD_LOCATION-':
+            print(event)
+            print(values)
             window['-DOWNLOAD_LOCATION-'].update(values['-DOWNLOAD_LOCATION-'] + "/")
 
-        if event == 'Download':
+        # Click on download button itself
+        if event == '-DOWNLOAD-':
             if values['-LIST-']:
+                auth = {'Authorization': str(settings["pexels_api_key"])}
+                collection_media = get_collection_media(f"https://api.pexels.com/v1/collections/{selection['id']}", selection['media_count'], auth)
+                photos = [i['src']['original'] for i in collection_media if i['type'] == 'Photo']
+                print(f"total photos in {selection['title']}: {len(photos)}")
+                videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
+                print(f"total videos in {selection['title']}: {len(videos)}")
+                print(f"selection media count: {len(photos) + len(videos)}")
+                pp.pprint(photos)
+                pp.pprint(videos)
                 download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
                 download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
 
-        if event == 'Change Settings':
+        # Click on change settings button
+        if event == '-CHANGE_SETTINGS-':
             event, values = create_settings_window(settings).read(close=True)
             if event == 'Save':
                 window.close()
