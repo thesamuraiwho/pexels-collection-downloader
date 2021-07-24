@@ -91,52 +91,6 @@ def get_json(url, auth, total_collections, field):
         count += 1
     return json
 
-def get_collections(url, total_collections, auth):
-    count = 0
-    collections = []
-    iterations = 0
-    # print(f"url: {url}")
-    # print(f"total_collections: {total_collections}")
-    # print(f"PER_PAGE: {PER_PAGE}")
-    # print(f"check: {total_collections / PER_PAGE < 1}")
-    if total_collections / PER_PAGE < 1:
-        iterations = 1
-    else:
-        iterations = math.ceil(total_collections / PER_PAGE)
-
-    # print(f"iterations: {iterations}")
-    while count < iterations:
-        # print(f"{url}?page={count + 1}&per_page={PER_PAGE}")
-        req = requests.get(f"{url}?page={count + 1}&per_page={PER_PAGE}", headers=auth)
-        collections += req.json()['collections']
-        count += 1
-
-    return collections
-
-def get_collection_media(url, total_collections, auth):
-    count = 0
-    collection_media = []
-    iterations = 0
-
-    # print(f"url: {url}")
-    # print(f"total_collections: {total_collections}")
-    # print(f"PER_PAGE: {PER_PAGE}")
-    # print(f"check: {total_collections / PER_PAGE < 1}")
-    if total_collections / PER_PAGE < 1:
-        iterations = 1
-    else:
-        iterations = math.ceil(total_collections / PER_PAGE)
-
-    while count < iterations:
-        # print(f"{url}?page={count + 1}&per_page={PER_PAGE}")
-        req = requests.get(f"{url}?page={count + 1}&per_page={PER_PAGE}", headers=auth)
-        new_collection_media = req.json()['media']
-        collection_media += new_collection_media
-        count += 1
-
-    return collection_media
-
-
 ##################### Load/Save Settings File #####################
 def load_settings(settings_file, default_settings):
     # TODO: Check if Pexels API Key is valid
@@ -188,17 +142,9 @@ def create_settings_window(settings):
 def create_main_window(settings):
     sg.theme(THEME)
     auth = {'Authorization': str(settings["pexels_api_key"])}
-    # print(f"home: {str(settings['home'])}")
     req = requests.get(COLLECTION_API, headers=auth)
     total_collections = req.json()["total_results"]
-    
-    # collections = get_collections(f"{COLLECTION_API}", total_collections, auth)
-
     collections = get_json(f"{COLLECTION_API}", auth, total_collections, 'collections')
-    
-    # print(f"total_collections: {total_collections}")
-    # print(f"collections:")
-    # pp.pprint(collections)
 
     left_col = [[sg.Text("Collections")],
                     [sg.HorizontalSeparator()],
@@ -295,9 +241,7 @@ def main():
 
         # Select a collection from the listbox
         if event == '-LIST-':
-            # print(values['-LIST-'][0])
             selection = [i for i in collections if values['-LIST-'][0] == i['title']][0]
-            # print(f"selection: {selection}")
             window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Selecting: {selection['title']}")
             window['-DESCRIPTION-'].update(f"Title: {selection['title']}\n"
                                             f"ID: {selection['id']}\n"
@@ -315,13 +259,9 @@ def main():
         if event == '-DOWNLOAD-':
             if values['-LIST-']:
                 auth = {'Authorization': str(settings["pexels_api_key"])}
-                # collection_media = get_collection_media(f"{COLLECTION_API}{selection['id']}", 
-                #     selection['media_count'], auth)
-
                 collection_media = get_json(f"{COLLECTION_API}{selection['id']}", auth, 
                     selection['media_count'], 'media')
                     
-
                 photos = [i['src'][quality_selection] for i in collection_media if i['type'] == 'Photo']
                 window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total photos in {selection['title']}: {len(photos)}")
                 videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
