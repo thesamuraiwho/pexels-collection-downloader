@@ -144,8 +144,8 @@ def create_main_window(settings):
 
     left_col = [[sg.Text("Collections")],
                     [sg.HorizontalSeparator()],
-                    [sg.Listbox(values=sorted([i['title'] for i in collections]), size=(20, total_collections), 
-                        key='-LIST-', enable_events=True)]]
+                    [sg.Listbox(values=sorted([i['title'] for i in collections], key=str.lower), 
+                        size=(20, total_collections), key='-LIST-', enable_events=True)]]
 
     mid_col_media_opt = [[sg.Text("Media Selection")],
                             [sg.HorizontalSeparator()],
