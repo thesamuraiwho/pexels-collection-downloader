@@ -3,6 +3,7 @@
 # Includes code from https://pysimplegui.readthedocs.io/en/latest/cookbook/
 # Copyright 2020 PySimpleGUI.com
 # Licensed under LGPL-3
+# Includes code from https://sempioneer.com/python-for-seo/how-to-download-images-in-python/#Method_One_How_To_Download_Multiple_Images_From_A_Python_List
 
 import PySimpleGUI as sg
 import os
@@ -12,10 +13,17 @@ from json import (load as jsonload, dump as jsondump)
 from os import path
 import math
 import pprint
+import enum
 
 # Globals
 pp = pprint.PrettyPrinter(indent=4)
 api_calls = 0
+
+# Classes
+class Media(enum.Enum):
+    photo_video = 0
+    photo = 1
+    video = 2
 
 # Constants
 THEME = "Black"
@@ -43,15 +51,6 @@ default_settings = {"pexels_api_key": "", "home": f"{parent_dir}"}
 settings_file = "settings.json"
 
 # Download media
-# Based on code from: https://sempioneer.com/python-for-seo/how-to-download-images-in-python/#Method_One_How_To_Download_Multiple_Images_From_A_Python_List
-
-import enum
-
-class Media(enum.Enum):
-    photo_video = 0
-    photo = 1
-    video = 2
-
 def download_media(urls, download_dir, media_type):
     broken_urls = []
     good_urls = []
@@ -101,7 +100,6 @@ def load_settings(settings_file, default_settings):
     except Exception as e:
         # sg.popup_quick_message(f'exception {e}', 'No settings file found... will create one for you', keep_on_top=True, background_color='red', text_color='white')
         settings = default_settings
-
     return settings
 
 def save_settings(settings_file, settings, values):
@@ -126,7 +124,6 @@ def create_settings_window(settings):
     layout = [  [TextLabel('Pexels API key'), sg.Input(key='-PEXELS API KEY-')],
                 [TextLabel('Home directory'), sg.Input(key='-HOME-'), sg.FolderBrowse(target='-HOME-')],
                 [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-EXIT-")]]
-
     window = sg.Window('Settings', layout, keep_on_top=True, finalize=True)
 
     for key in SETTINGS_KEYS_TO_ELEMENT_KEYS:   # update window with the values read from settings file
@@ -134,7 +131,6 @@ def create_settings_window(settings):
             window[SETTINGS_KEYS_TO_ELEMENT_KEYS[key]].update(value=settings[key])
         except Exception as e:
             print(f'Problem updating PySimpleGUI window from settings. Key = {key}')
-
     return window
 
 
@@ -148,7 +144,7 @@ def create_main_window(settings):
 
     left_col = [[sg.Text("Collections")],
                     [sg.HorizontalSeparator()],
-                    [sg.Listbox(values=[i['title'] for i in collections], size=(25, total_collections), 
+                    [sg.Listbox(values=sorted([i['title'] for i in collections]), size=(20, total_collections), 
                         key='-LIST-', enable_events=True)]]
 
     mid_col_media_opt = [[sg.Text("Media Selection")],
@@ -201,7 +197,6 @@ def main():
     "-QUALITY_PORTRAIT-",
     "-QUALITY_LANDSCAPE-",
     "-QUALITY_TINY-"]
-
     quality_values = ["original",
         "large2x",
         "large",
@@ -210,17 +205,10 @@ def main():
         "portrait",
         "landscape",
         "tiny"]
-
     quality_selection = "original"
 
-    media_keys = ["-MEDIA_ALL-",
-        "-MEDIA_PHOTOS-",
-        "-MEDIA_VIDEOS-"]
-
-    media_values = ["photo_video",
-        "photo",
-        "video"]
-
+    media_keys = ["-MEDIA_ALL-", "-MEDIA_PHOTOS-", "-MEDIA_VIDEOS-"]
+    media_values = ["photo_video", "photo", "video"]
     media_selection = "photo_video"
 
     while True:             # Event Loop
@@ -244,11 +232,11 @@ def main():
             selection = [i for i in collections if values['-LIST-'][0] == i['title']][0]
             window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Selecting: {selection['title']}")
             window['-DESCRIPTION-'].update(f"Title: {selection['title']}\n"
-                                            f"ID: {selection['id']}\n"
-                                            f"Description: {selection['description']}\n"
+                                            f"ID: {selection['id']}\n"                                            
                                             f"Total media count: {selection['media_count']}\n"
                                             f"Photos count: {selection['photos_count']}\n"
-                                            f"Videos count: {selection['videos_count']}")
+                                            f"Videos count: {selection['videos_count']}\n"
+                                            f"\nDescription: {selection['description']}\n\n")
 
         # Click on download browser button
         if event == '-DOWNLOAD_LOCATION-':
@@ -262,14 +250,13 @@ def main():
                 collection_media = get_json(f"{COLLECTION_API}{selection['id']}", auth, 
                     selection['media_count'], 'media')
                     
-                photos = [i['src'][quality_selection] for i in collection_media if i['type'] == 'Photo']
-                window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total photos in {selection['title']}: {len(photos)}")
-                videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
-                window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total videos in {selection['title']}: {len(videos)}")
-                window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total media count in {selection['title']}: {len(photos) + len(videos)}")
-                # pp.pprint(photos)
-                # pp.pprint(videos)
+                # Create photos and video lists for download, download, and return successful/failed urls
                 if media_selection == "photo_video":
+                    photos = [i['src'][quality_selection] for i in collection_media if i['type'] == 'Photo']
+                    videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
+                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total photos in {selection['title']}: {len(photos)}")
+                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total videos in {selection['title']}: {len(videos)}")
+                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total media count in {selection['title']}: {len(photos) + len(videos)}")
                     broken_photos, good_photos = download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
                     window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Good photo urls: {good_photos}")
                     window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Broken photo urls: {broken_photos}")
@@ -277,21 +264,17 @@ def main():
                     window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Good video urls: {good_videos}")
                     window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Broken video urls: {broken_videos}")
                 elif media_selection == "photo":
+                    photos = [i['src'][quality_selection] for i in collection_media if i['type'] == 'Photo']
+                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total photos in {selection['title']}: {len(photos)}")
                     broken_photos, good_photos = download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
                     window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Good photo urls: {good_photos}")
                     window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Broken photo urls: {broken_photos}")
                 else:
+                    videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
+                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total videos in {selection['title']}: {len(videos)}")
                     broken_videos, good_videos = download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
                     window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Good video urls: {good_videos}")
                     window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Broken video urls: {broken_videos}")
-
-        # Click on change settings button
-        if event == '-CHANGE_SETTINGS-':
-            event, values = create_settings_window(settings).read(close=True)
-            if event == '-SAVE-':
-                window.close()
-                window = None
-                save_settings(settings_file, settings, values)
 
         # Show photo quality radio selection
         if event in quality_keys:
@@ -308,6 +291,14 @@ def main():
                 if values[media_keys[i]]:
                     media_selection = media_values[i]
             window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Selecting media option: {media_selection}")
+        
+        # Click on change settings button
+        if event == '-CHANGE_SETTINGS-':
+            event, values = create_settings_window(settings).read(close=True)
+            if event == '-SAVE-':
+                window.close()
+                window = None
+                save_settings(settings_file, settings, values)
 
     window.close()
 main()
