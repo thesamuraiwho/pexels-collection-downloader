@@ -18,8 +18,9 @@ pp = pprint.PrettyPrinter(indent=4)
 api_calls = 0
 
 # Constants
-THEME = "DarkAmber"
+THEME = "Black"
 PER_PAGE = 80
+COLLECTION_API = "https://api.pexels.com/v1/collections/"
 
 # Setup settings.json file
 default_settings = {"pexels_api_key": "", "home": ""}
@@ -48,13 +49,14 @@ class Media(enum.Enum):
 
 def download_media(urls, download_dir, media_type):
     broken_urls = []
+    good_urls = []
     for media in urls:
         # We can split the file based upon / and extract the last split within the python list below:
         if media_type == Media.photo:
             file_name = download_dir + (media.split('/')[-1]).split("?")[0]
         else:
             file_name = download_dir + media.split('/')[-2] + ".mp4"
-        print(f"This is the file name: {file_name}")
+        # print(f"This is the file name: {file_name}")
         # Now let's send a request to the image URL:
         r = requests.get(media, stream=True)
         # We can check that the status code is 200 before doing anything else:
@@ -63,29 +65,29 @@ def download_media(urls, download_dir, media_type):
             with open(file_name, 'wb') as f:
                 for chunk in r:
                     f.write(chunk)
+            good_urls.append(media)
         else:
             # We will write all of the images back to the broken_images list:
             broken_urls.append(media)
     
-    return broken_urls
+    return broken_urls, good_urls
 
 def get_collections(url, total_collections, auth):
     count = 0
     collections = []
     iterations = 0
-
-    print(f"url: {url}")
-    print(f"total_collections: {total_collections}")
-    print(f"PER_PAGE: {PER_PAGE}")
-    print(f"check: {total_collections / PER_PAGE < 1}")
+    # print(f"url: {url}")
+    # print(f"total_collections: {total_collections}")
+    # print(f"PER_PAGE: {PER_PAGE}")
+    # print(f"check: {total_collections / PER_PAGE < 1}")
     if total_collections / PER_PAGE < 1:
         iterations = 1
     else:
         iterations = math.ceil(total_collections / PER_PAGE)
 
-    print(f"iterations: {iterations}")
+    # print(f"iterations: {iterations}")
     while count < iterations:
-        print(f"{url}?page={count + 1}&per_page={PER_PAGE}")
+        # print(f"{url}?page={count + 1}&per_page={PER_PAGE}")
         req = requests.get(f"{url}?page={count + 1}&per_page={PER_PAGE}", headers=auth)
         collections += req.json()['collections']
         count += 1
@@ -97,25 +99,25 @@ def get_collection_media(url, total_collections, auth):
     collection_media = []
     iterations = 0
 
-    print(f"url: {url}")
-    print(f"total_collections: {total_collections}")
-    print(f"PER_PAGE: {PER_PAGE}")
-    print(f"check: {total_collections / PER_PAGE < 1}")
+    # print(f"url: {url}")
+    # print(f"total_collections: {total_collections}")
+    # print(f"PER_PAGE: {PER_PAGE}")
+    # print(f"check: {total_collections / PER_PAGE < 1}")
     if total_collections / PER_PAGE < 1:
         iterations = 1
     else:
         iterations = math.ceil(total_collections / PER_PAGE)
 
-    print(f"iterations: {iterations}")
+    # print(f"iterations: {iterations}")
     while count < iterations:
-        print(f"{url}?page={count + 1}&per_page={PER_PAGE}")
+        # print(f"{url}?page={count + 1}&per_page={PER_PAGE}")
         req = requests.get(f"{url}?page={count + 1}&per_page={PER_PAGE}", headers=auth)
         new_collection_media = req.json()['media']
 
-        photos = [i['id'] for i in new_collection_media if i['type'] == 'Photo']
-        print(f"len photos: {len(photos)}")
-        videos = [i['id'] for i in new_collection_media if i['type'] == 'Video']
-        print(f"len videos: {len(videos)}")
+        # photos = [i['id'] for i in new_collection_media if i['type'] == 'Photo']
+        # print(f"len photos: {len(photos)}")
+        # videos = [i['id'] for i in new_collection_media if i['type'] == 'Video']
+        # print(f"len videos: {len(videos)}")
 
         collection_media += new_collection_media
         count += 1
@@ -135,6 +137,7 @@ def load_settings(settings_file, default_settings):
         # sg.popup_quick_message(f'exception {e}', 'No settings file found... will create one for you', keep_on_top=True, background_color='red', text_color='white')
         settings = default_settings
         # save_settings(settings_file, settings, None)
+
     return settings
 
 
@@ -176,15 +179,14 @@ def create_settings_window(settings):
 def create_main_window(settings):
     sg.theme(THEME)
     auth = {'Authorization': str(settings["pexels_api_key"])}
-    print(f"home: {str(settings['home'])}")
-    req = requests.get("https://api.pexels.com/v1/collections", headers=auth)
+    # print(f"home: {str(settings['home'])}")
+    req = requests.get(COLLECTION_API, headers=auth)
     total_collections = req.json()["total_results"]
-    print(f"https://api.pexels.com/v1/collections/?per-page={total_collections}")
-    collections = get_collections("https://api.pexels.com/v1/collections/", total_collections, auth)
-
-    print(f"total_collections: {total_collections}")
-    print(f"collections:")
-    pp.pprint(collections)
+    # print(f"{COLLECTION_API}?per-page={total_collections}")
+    collections = get_collections(f"{COLLECTION_API}", total_collections, auth)
+    # print(f"total_collections: {total_collections}")
+    # print(f"collections:")
+    # pp.pprint(collections)
 
     left_col = [[sg.Text("Collections")],
                     [sg.HorizontalSeparator()],
@@ -193,7 +195,7 @@ def create_main_window(settings):
     mid_col = [[sg.Text("Collection Description")],
                 [sg.HorizontalSeparator()],
                 [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]]
-    right_col = [[sg.Text('Collection Quality')],
+    right_col = [[sg.Text('Collection Photo Quality')],
                     [sg.HorizontalSeparator()],
                     [sg.Radio(key="-QUALITY_ORIGINAL-", text="Original", default=True, enable_events=True, group_id=1)],
                     [sg.Radio(key="-QUALITY_2X-", text="Large 2x", enable_events=True, group_id=1)],
@@ -203,11 +205,13 @@ def create_main_window(settings):
                     [sg.Radio(key="-QUALITY_PORTRAIT-", text="Portrait", enable_events=True, group_id=1)],
                     [sg.Radio(key="-QUALITY_LANDSCAPE-", text="Landscape", enable_events=True, group_id=1)],
                     [sg.Radio(key="-QUALITY_TINY-", text="Tiny", enable_events=True, group_id=1)]]
-
     layout = [[ sg.Column(left_col), sg.VSeparator(), sg.Column(mid_col), sg.VSeparator(), sg.Column(right_col)],
                 [sg.Text('Select download location'), 
-                    sg.InputText(key="-DOWNLOAD_LOCATION-", default_text=str(settings['home']) + '/', readonly=True, enable_events=True), 
-                    sg.FolderBrowse(key="-DOWNLOAD_BROWSER-", target="-DOWNLOAD_LOCATION-", initial_folder=str(settings['home']) + "/")],
+                    sg.InputText(key="-DOWNLOAD_LOCATION-", default_text=str(settings['home']) + '/', 
+                        readonly=True, disabled_readonly_background_color="#4d4d4d",enable_events=True), 
+                    sg.FolderBrowse(key="-DOWNLOAD_BROWSER-", target="-DOWNLOAD_LOCATION-", 
+                        initial_folder=str(settings['home']) + "/")],
+                [sg.MLine(key="-OUTPUT-" + sg.WRITE_ONLY_KEY, size=(74, 5), write_only=True)],
                 [sg.Button(button_text='Download', key="-DOWNLOAD-"), sg.Button(button_text='Exit', key="-EXIT-"),
                     sg.Button(button_text='Change Settings', key="-CHANGE_SETTINGS-")]]
 
@@ -215,6 +219,26 @@ def create_main_window(settings):
 
 def main():
     window, settings = None, load_settings(settings_file, default_settings)
+
+    radio_keys = ["-QUALITY_ORIGINAL-",
+    "-QUALITY_2X-",
+    "-QUALITY_LARGE-",
+    "-QUALITY_MEDIUM-",
+    "-QUALITY_SMALL-",
+    "-QUALITY_PORTRAIT-",
+    "-QUALITY_LANDSCAPE-",
+    "-QUALITY_TINY-"]
+
+    radio_values = ["original",
+        "large2x",
+        "large",
+        "medium",
+        "small",
+        "portrait",
+        "landscape",
+        "tiny"]
+
+    radio_quality = "original"
 
     while True:             # Event Loop
         if window is None:
@@ -226,19 +250,18 @@ def main():
             window, collections = create_main_window(settings)
 
         event, values = window.read()
-        
         print(f"event: {event}")
-        print(values)
+        print(f"values: {values}")
         
         if event in (sg.WIN_CLOSED, '-EXIT-'):
             break
 
         # Select a collection from the listbox
         if event == '-LIST-':
-            print(values['-LIST-'][0])
+            # print(values['-LIST-'][0])
             selection = [i for i in collections if values['-LIST-'][0] == i['title']][0]
-            print(f"selection: {selection}")
-
+            # print(f"selection: {selection}")
+            window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Selecting: {selection['title']}")
             window['-DESCRIPTION-'].update(f"Title: {selection['title']}\n"
                                             f"ID: {selection['id']}\n"
                                             f"Description: {selection['description']}\n"
@@ -248,53 +271,55 @@ def main():
 
         # Click on download browser button
         if event == '-DOWNLOAD_LOCATION-':
-            print(event)
-            print(values)
             window['-DOWNLOAD_LOCATION-'].update(values['-DOWNLOAD_LOCATION-'] + "/")
 
         # Click on download button itself
         if event == '-DOWNLOAD-':
             if values['-LIST-']:
                 auth = {'Authorization': str(settings["pexels_api_key"])}
-                collection_media = get_collection_media(f"https://api.pexels.com/v1/collections/{selection['id']}", selection['media_count'], auth)
-                # photos = [i['src']['original'] for i in collection_media if i['type'] == 'Photo']
+                collection_media = get_collection_media(f"{COLLECTION_API}{selection['id']}", 
+                    selection['media_count'], auth)
                 
-                # Check the selected quality
-                radio_keys = ["-QUALITY_ORIGINAL-",
-                    "-QUALITY_2X-",
-                    "-QUALITY_LARGE-",
-                    "-QUALITY_MEDIUM-",
-                    "-QUALITY_SMALL-",
-                    "-QUALITY_PORTRAIT-",
-                    "-QUALITY_LANDSCAPE-",
-                    "-QUALITY_TINY-"]
+                # # Check the selected quality
+                # radio_keys = ["-QUALITY_ORIGINAL-",
+                #     "-QUALITY_2X-",
+                #     "-QUALITY_LARGE-",
+                #     "-QUALITY_MEDIUM-",
+                #     "-QUALITY_SMALL-",
+                #     "-QUALITY_PORTRAIT-",
+                #     "-QUALITY_LANDSCAPE-",
+                #     "-QUALITY_TINY-"]
 
-                radio_values = ["original",
-                    "large2x",
-                    "large",
-                    "medium",
-                    "small",
-                    "portrait",
-                    "landscape",
-                    "tiny", ]
+                # radio_values = ["original",
+                #     "large2x",
+                #     "large",
+                #     "medium",
+                #     "small",
+                #     "portrait",
+                #     "landscape",
+                #     "tiny", ]
                 
-                radio_quality = "original"
+                # radio_quality = "original"
 
-                for i in range(len(radio_keys)):
-                    if values[radio_keys[i]]:
-                        radio_quality = radio_values[i]
+                # for i in range(len(radio_keys)):
+                #     if values[radio_keys[i]]:
+                #         radio_quality = radio_values[i]
                 
-                print(f"radio_quality: {radio_quality}")
+                # print(f"radio_quality: {radio_quality}")
 
                 photos = [i['src'][radio_quality] for i in collection_media if i['type'] == 'Photo']
-                print(f"total photos in {selection['title']}: {len(photos)}")
+                # print(f"total photos in {selection['title']}: {len(photos)}")
                 videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
-                print(f"total videos in {selection['title']}: {len(videos)}")
-                print(f"selection media count: {len(photos) + len(videos)}")
+                # print(f"total videos in {selection['title']}: {len(videos)}")
+                # print(f"selection media count: {len(photos) + len(videos)}")
                 # pp.pprint(photos)
                 # pp.pprint(videos)
-                download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
-                download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
+                broken_photos, good_photos = download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
+                window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Good photo urls: {good_photos}")
+                window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Broken photo urls: {broken_photos}")
+                broken_videos, good_videos = download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
+                window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Good video urls: {good_video}")
+                window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Broken video urls: {broken_video}")
 
         # Click on change settings button
         if event == '-CHANGE_SETTINGS-':
@@ -303,6 +328,14 @@ def main():
                 window.close()
                 window = None
                 save_settings(settings_file, settings, values)
+
+        # Show photo quality radio selection
+        if event in radio_keys:
+            # Check the selected quality
+            for i in range(len(radio_keys)):
+                if values[radio_keys[i]]:
+                    radio_quality = radio_values[i]
+            window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Selecting photo quality: {radio_quality}")
 
     window.close()
 main()
