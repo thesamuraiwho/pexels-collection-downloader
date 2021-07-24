@@ -3,10 +3,11 @@ venv
 recipe*.py
 test*.py
 settings.json
+*.json
 __pycache__
 build
 dist
 main.spec
 progress_photos
 downloads
-thumbnails
+collections_data
