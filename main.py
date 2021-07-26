@@ -66,7 +66,6 @@ def download_media(urls, download_dir, media_type):
             file_name = download_dir + (media.split('/')[-1]).split("?")[0]
         else:
             file_name = download_dir + media.split('/')[-2] + ".mp4"
-        # print(f"This is the file name: {file_name}")
         # Now let's send a request to the image URL:
         r = requests.get(media, stream=True)
         # We can check that the status code is 200 before doing anything else:
@@ -79,7 +78,6 @@ def download_media(urls, download_dir, media_type):
         else:
             # We will write all of the images back to the broken_images list:
             broken_urls.append(media)
-    
     return broken_urls, good_urls
 
 def get_json(url, auth, total_collections, field):
@@ -92,6 +90,11 @@ def get_json(url, auth, total_collections, field):
         iterations = math.ceil(total_collections / PER_PAGE)
     while count < iterations:
         req = requests.get(f"{url}?page={count + 1}&per_page={PER_PAGE}", headers=auth)
+        monthly_req_left = req.headers['X-Ratelimit-Remaining']
+        req_quota_reset = int(req.headers['X-Ratelimit-Reset'])
+
+        print(f"{monthly_req_left}\n{req_quota_reset}\n")
+        
         json += req.json()[field]
         count += 1
     return json
@@ -160,19 +163,17 @@ def create_main_window(settings):
         hourly_limit_reached = True
     else:
         print(req.status_code)
-    print(req.content)
+    # print(req.content)
 
     # while not api_key_valid:
     #     create_settings_window(settings).read(close=True)
 
-    # print(req.headers)
-    monthly_req_left = req.headers['X-Ratelimit-Remaining']
-    # print(f"remaining montyly requests: {monthly_req_left}")
-    req_quota_reset = int(req.headers['X-Ratelimit-Reset'])
-    # print(f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M:%SZ')}")
 
     total_collections = req.json()["total_results"]
     collections = get_json(f"{COLLECTION_API}", auth, total_collections, 'collections')
+
+    monthly_req_left = req.headers['X-Ratelimit-Remaining']
+    req_quota_reset = int(req.headers['X-Ratelimit-Reset'])
 
     left_col = [[sg.Text("Collections")],
                     [sg.HorizontalSeparator()],
@@ -193,7 +194,7 @@ def create_main_window(settings):
                         [sg.Text(key="-REMAINING_REQ-", text=f"{monthly_req_left}")],
                         [sg.HorizontalSeparator()],
                         [sg.Text(text="Request quota resets:")],
-                        [sg.Text(key="", text=f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")]]
+                        [sg.Text(key="-REQ_QUOTA_RESET-", text=f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")]]
     mid_col = [[sg.Text("Collection Description")],
                 [sg.HorizontalSeparator()],
                 [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]] + [[sg.Text()]] + request_panel #+ media_opt_panel
@@ -207,13 +208,7 @@ def create_main_window(settings):
                     [sg.Radio(key="-QUALITY_SMALL-", text="Small", enable_events=True, group_id=1)],
                     [sg.Radio(key="-QUALITY_PORTRAIT-", text="Portrait", enable_events=True, group_id=1)],
                     [sg.Radio(key="-QUALITY_LANDSCAPE-", text="Landscape", enable_events=True, group_id=1)],
-                    [sg.Radio(key="-QUALITY_TINY-", text="Tiny", enable_events=True, group_id=1)],
-                    ]#,
-                    # [sg.Text(text="Monthly requests left:")],
-                    # [sg.Text(key="-REMAINING_REQ-", text=f"{monthly_req_left}")],
-                    # [sg.HorizontalSeparator()],
-                    # [sg.Text(text="Request quota resets:")],
-                    # [sg.Text(key="", text=f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")]]
+                    [sg.Radio(key="-QUALITY_TINY-", text="Tiny", enable_events=True, group_id=1)],]
     layout = [[ sg.Column(left_col), sg.VSeparator(), sg.Column(mid_col), sg.VSeparator(), 
                     sg.Column(right_col)],
                 [sg.Text('Select download location'), 
@@ -325,6 +320,9 @@ def main():
                     broken_videos, good_videos = download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
                     window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Good video urls: {good_videos}")
                     window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Broken video urls: {broken_videos}")
+                
+                window['-REMAINING_REQ-'].update(f"{monthly_req_left}")
+                window['-REQ_QUOTA_RESET-'].update(f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")
 
         # Show photo quality radio selection
         if event in quality_keys:
