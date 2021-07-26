@@ -4,6 +4,7 @@
 # Copyright 2020 PySimpleGUI.com
 # Licensed under LGPL-3
 # Includes code from https://sempioneer.com/python-for-seo/how-to-download-images-in-python/#Method_One_How_To_Download_Multiple_Images_From_A_Python_List
+# Includes code from Jason Yang: https://stackoverflow.com/a/66868963
 
 import PySimpleGUI as sg
 import os
@@ -14,10 +15,13 @@ from os import path
 import math
 import pprint
 import enum
+from datetime import datetime
+import webbrowser
 
 # Globals
 pp = pprint.PrettyPrinter(indent=4)
-api_calls = 0
+monthly_req_left = 0
+req_quota_reset = 0
 
 # Classes
 class Media(enum.Enum):
@@ -123,7 +127,8 @@ def create_settings_window(settings):
 
     layout = [  [TextLabel('Pexels API key'), sg.Input(key='-PEXELS API KEY-')],
                 [TextLabel('Home directory'), sg.Input(key='-HOME-'), sg.FolderBrowse(target='-HOME-')],
-                [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-EXIT-")]]
+                [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-EXIT-")],
+                [sg.Text(key='URL https://www.pexels.com/api/', text='Link to Pexels API', tooltip='https://www.pexels.com/api/', enable_events=True)]]
     window = sg.Window('Settings', layout, keep_on_top=True, finalize=True)
 
     for key in SETTINGS_KEYS_TO_ELEMENT_KEYS:   # update window with the values read from settings file
@@ -139,6 +144,12 @@ def create_main_window(settings):
     sg.theme(THEME)
     auth = {'Authorization': str(settings["pexels_api_key"])}
     req = requests.get(COLLECTION_API, headers=auth)
+    # print(req.headers)
+    monthly_req_left = req.headers['X-Ratelimit-Remaining']
+    # print(f"remaining montyly requests: {monthly_req_left}")
+    req_quota_reset = int(req.headers['X-Ratelimit-Reset'])
+    # print(f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M:%SZ')}")
+
     total_collections = req.json()["total_results"]
     collections = get_json(f"{COLLECTION_API}", auth, total_collections, 'collections')
 
@@ -147,7 +158,7 @@ def create_main_window(settings):
                     [sg.Listbox(values=sorted([i['title'] for i in collections], key=str.lower), 
                         size=(20, total_collections), key='-LIST-', enable_events=True)]]
 
-    mid_col_media_opt = [[sg.Text("Media Selection")],
+    media_opt_panel = [[sg.Text("Media Selection")],
                             [sg.HorizontalSeparator()],
                             [sg.Radio(key="-MEDIA_ALL-", text="Photos and Videos", default=True, enable_events=True, 
                                 group_id=2)],
@@ -155,10 +166,17 @@ def create_main_window(settings):
                                 group_id=2)],
                             [sg.Radio(key="-MEDIA_VIDEOS-", text="Videos Only", enable_events=True, 
                                 group_id=2)]]
+    request_panel = [[sg.Text("Hourly request limit: 200")],
+                        [sg.HorizontalSeparator()],
+                        [sg.Text(text="Monthly requests left:")],
+                        [sg.Text(key="-REMAINING_REQ-", text=f"{monthly_req_left}")],
+                        [sg.HorizontalSeparator()],
+                        [sg.Text(text="Request quota resets:")],
+                        [sg.Text(key="", text=f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")]]
     mid_col = [[sg.Text("Collection Description")],
                 [sg.HorizontalSeparator()],
-                [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]] + [[sg.Text()]]+ mid_col_media_opt
-    right_col = [[sg.Text('Collection Photo Quality')],
+                [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]] + [[sg.Text()]] + request_panel #+ media_opt_panel
+    right_col = media_opt_panel + [[sg.HorizontalSeparator()], [sg.HorizontalSeparator()]] + [[sg.Text('Collection Photo Quality')],
                     [sg.HorizontalSeparator()],
                     [sg.Radio(key="-QUALITY_ORIGINAL-", text="Original", default=True, enable_events=True, 
                         group_id=1)],
@@ -168,7 +186,13 @@ def create_main_window(settings):
                     [sg.Radio(key="-QUALITY_SMALL-", text="Small", enable_events=True, group_id=1)],
                     [sg.Radio(key="-QUALITY_PORTRAIT-", text="Portrait", enable_events=True, group_id=1)],
                     [sg.Radio(key="-QUALITY_LANDSCAPE-", text="Landscape", enable_events=True, group_id=1)],
-                    [sg.Radio(key="-QUALITY_TINY-", text="Tiny", enable_events=True, group_id=1)]]
+                    [sg.Radio(key="-QUALITY_TINY-", text="Tiny", enable_events=True, group_id=1)],
+                    ]#,
+                    # [sg.Text(text="Monthly requests left:")],
+                    # [sg.Text(key="-REMAINING_REQ-", text=f"{monthly_req_left}")],
+                    # [sg.HorizontalSeparator()],
+                    # [sg.Text(text="Request quota resets:")],
+                    # [sg.Text(key="", text=f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")]]
     layout = [[ sg.Column(left_col), sg.VSeparator(), sg.Column(mid_col), sg.VSeparator(), 
                     sg.Column(right_col)],
                 [sg.Text('Select download location'), 
@@ -182,7 +206,12 @@ def create_main_window(settings):
                 [sg.MLine(key="-OUTPUT-" + sg.WRITE_ONLY_KEY, size=(74, 5), write_only=True)],
                 [sg.Button(button_text='Download', key="-DOWNLOAD-"), 
                     sg.Button(button_text='Exit', key="-EXIT-"),
-                    sg.Button(button_text='Change Settings', key="-CHANGE_SETTINGS-")]]
+                    sg.Button(button_text='Change Settings', key="-CHANGE_SETTINGS-")],
+                [sg.Text(key='URL https://github.com/thesamuraiwho', text='Developed by TheSamuraiWho', tooltip='https://github.com/thesamuraiwho', enable_events=True), 
+                    sg.VerticalSeparator(), 
+                    sg.Text(key='URL https://www.pexels.com/', text='Photos provided by Pexels', tooltip='https://www.pexels.com/', enable_events=True),
+                    sg.VerticalSeparator(),
+                    sg.Button(button_text='Credits', key="-CREDITS-")]]
 
     return sg.Window('Pexels Collection Downloader', layout), collections
 
@@ -190,13 +219,13 @@ def main():
     window, settings = None, load_settings(settings_file, default_settings)
 
     quality_keys = ["-QUALITY_ORIGINAL-",
-    "-QUALITY_2X-",
-    "-QUALITY_LARGE-",
-    "-QUALITY_MEDIUM-",
-    "-QUALITY_SMALL-",
-    "-QUALITY_PORTRAIT-",
-    "-QUALITY_LANDSCAPE-",
-    "-QUALITY_TINY-"]
+        "-QUALITY_2X-",
+        "-QUALITY_LARGE-",
+        "-QUALITY_MEDIUM-",
+        "-QUALITY_SMALL-",
+        "-QUALITY_PORTRAIT-",
+        "-QUALITY_LANDSCAPE-",
+        "-QUALITY_TINY-"]
     quality_values = ["original",
         "large2x",
         "large",
@@ -299,6 +328,16 @@ def main():
                 window.close()
                 window = None
                 save_settings(settings_file, settings, values)
+        
+        # Open URLs if they are clicked
+        if event.startswith("URL"):
+            url = event.split(" ")[1]
+            webbrowser.open(url)
+
+        # Open a popup of the contributors in the credits
+        if event == "-CREDITS-":
+            sg.popup_ok('Thank you everyone who has contributed to this project, especially:\n', 
+                'Brian Le: QA, feedback, and motivator', title='Credits', keep_on_top=True)
 
     window.close()
 main()
