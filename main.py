@@ -22,6 +22,8 @@ import webbrowser
 pp = pprint.PrettyPrinter(indent=4)
 monthly_req_left = 0
 req_quota_reset = 0
+api_key_valid = False
+hourly_limit_reached = False
 
 # Classes
 class Media(enum.Enum):
@@ -127,8 +129,8 @@ def create_settings_window(settings):
 
     layout = [  [TextLabel('Pexels API key'), sg.Input(key='-PEXELS API KEY-')],
                 [TextLabel('Home directory'), sg.Input(key='-HOME-'), sg.FolderBrowse(target='-HOME-')],
-                [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-EXIT-")],
-                [sg.Text(key='URL https://www.pexels.com/api/', text='Link to Pexels API', tooltip='https://www.pexels.com/api/', enable_events=True)]]
+                [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-EXIT-")]]#,
+                # [sg.Text(key='URL https://www.pexels.com/api/', text='Link to Pexels API', tooltip='https://www.pexels.com/api/', enable_events=True)]]
     window = sg.Window('Settings', layout, keep_on_top=True, finalize=True)
 
     for key in SETTINGS_KEYS_TO_ELEMENT_KEYS:   # update window with the values read from settings file
@@ -136,14 +138,33 @@ def create_settings_window(settings):
             window[SETTINGS_KEYS_TO_ELEMENT_KEYS[key]].update(value=settings[key])
         except Exception as e:
             print(f'Problem updating PySimpleGUI window from settings. Key = {key}')
-    return window
 
+    return window
 
 ##################### Main Program Window & Event Loop #####################
 def create_main_window(settings):
     sg.theme(THEME)
     auth = {'Authorization': str(settings["pexels_api_key"])}
     req = requests.get(COLLECTION_API, headers=auth)
+
+    status = req.status_code
+
+    if status == 200:
+        print("OK")
+        api_key_valid = True
+    elif status == 401:
+        print("Unauthorized")
+        api_key_valid = False
+    elif status == 429:
+        print("Too many requests")
+        hourly_limit_reached = True
+    else:
+        print(req.status_code)
+    print(req.content)
+
+    # while not api_key_valid:
+    #     create_settings_window(settings).read(close=True)
+
     # print(req.headers)
     monthly_req_left = req.headers['X-Ratelimit-Remaining']
     # print(f"remaining montyly requests: {monthly_req_left}")
