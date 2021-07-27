@@ -23,6 +23,7 @@ pp = pprint.PrettyPrinter(indent=4)
 monthly_req_left = 0
 req_quota_reset = 0
 api_key_valid = False
+home_dir_valid = False
 hourly_limit_reached = False
 
 # Classes
@@ -55,6 +56,39 @@ for i in directories:
 # Setup settings.json file
 default_settings = {"pexels_api_key": "", "home": f"{parent_dir}"}
 settings_file = "settings.json"
+
+# Check API Key
+def check_api_key(settings):
+    auth = {'Authorization': str(settings["pexels_api_key"])}
+    print(f'settings["pexels_api_key"]: {settings["pexels_api_key"]}')
+    req = requests.get(COLLECTION_API, headers=auth)
+
+    status = req.status_code
+    if status == 200:
+        print("OK")
+        api_key_valid = True
+        return True
+    elif status == 401 or status == 403:
+        if status == 401:
+            print("Unauthorized")
+        else:
+            print("Forbidden")
+        api_key_valid = False
+    elif status == 429:
+        print("Too many requests")
+        hourly_limit_reached = True
+    else:
+        print(req.status_code)
+    
+    return False
+
+# Check Home directory
+def check_home_dir(settings):
+    if os.path.exists(str(settings['home'])):
+        return True
+    else:
+        return False
+
 
 # Download media
 def download_media(urls, download_dir, media_type):
@@ -132,8 +166,8 @@ def create_settings_window(settings):
 
     layout = [  [TextLabel('Pexels API key'), sg.Input(key='-PEXELS API KEY-')],
                 [TextLabel('Home directory'), sg.Input(key='-HOME-'), sg.FolderBrowse(target='-HOME-')],
-                [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-EXIT-")]]#,
-                # [sg.Text(key='URL https://www.pexels.com/api/', text='Link to Pexels API', tooltip='https://www.pexels.com/api/', enable_events=True)]]
+                [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-EXIT-"), sg.Text(key='-OUTPUT-', text="", text_color="red", size=(30,1))],
+                [sg.Text(key='URL https://www.pexels.com/api/', text='Link to Pexels API', tooltip='https://www.pexels.com/api/', enable_events=True)]]
     window = sg.Window('Settings', layout, keep_on_top=True, finalize=True)
 
     for key in SETTINGS_KEYS_TO_ELEMENT_KEYS:   # update window with the values read from settings file
@@ -149,29 +183,8 @@ def create_main_window(settings):
     sg.theme(THEME)
     auth = {'Authorization': str(settings["pexels_api_key"])}
     req = requests.get(COLLECTION_API, headers=auth)
-
-    status = req.status_code
-
-    if status == 200:
-        print("OK")
-        api_key_valid = True
-    elif status == 401:
-        print("Unauthorized")
-        api_key_valid = False
-    elif status == 429:
-        print("Too many requests")
-        hourly_limit_reached = True
-    else:
-        print(req.status_code)
-    # print(req.content)
-
-    # while not api_key_valid:
-    #     create_settings_window(settings).read(close=True)
-
-
     total_collections = req.json()["total_results"]
     collections = get_json(f"{COLLECTION_API}", auth, total_collections, 'collections')
-
     monthly_req_left = req.headers['X-Ratelimit-Remaining']
     req_quota_reset = int(req.headers['X-Ratelimit-Reset'])
 
@@ -260,9 +273,40 @@ def main():
         if window is None:
             # If first time setup, create the settings window
             if settings == default_settings:
-                event, values = create_settings_window(settings).read(close=True)
-                if event == '-SAVE-':
-                    save_settings(settings_file, settings, values)
+                window = create_settings_window(settings)
+                api_check = check_api_key(settings)
+                home_check = check_home_dir(settings)
+                print(f"api_check: {api_check}")
+                print(f"home_check: {home_check}")
+                while not api_check or not home_check:
+                    event, values = window.read()
+                    print(f"event: {event}")
+                    print(f"values: {values}")
+                    settings = {"pexels_api_key": f"{values['-PEXELS API KEY-']}", "home": f"{values['-HOME-']}"}
+
+                    if event == '-SAVE-':
+                        api_check = check_api_key(settings)
+                        home_check = check_home_dir(settings)
+                        print(f"api_check: {api_check}")
+                        print(f"home_check: {home_check}")
+                        if api_check and home_check:
+                            save_settings(settings_file, settings, values)
+                            window.close()
+                        elif not api_check and home_check:
+                            window['-OUTPUT-'].update("Invalid API Key")
+                        elif api_check and not home_check:
+                            window['-OUTPUT-'].update("Invalid Home directory")
+                        else:
+                            window['-OUTPUT-'].update("Invalid API Key or Home directory")
+                    
+                    # TODO: Clean exit
+                    if event in (sg.WIN_CLOSED, '-EXIT-'):
+                        exit()
+
+                    # Open URLs if they are clicked
+                    if event.startswith("URL"):
+                        url = event.split(" ")[1]
+                        webbrowser.open(url)
             window, collections = create_main_window(settings)
 
         event, values = window.read()
@@ -340,6 +384,7 @@ def main():
                     media_selection = media_values[i]
             window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Selecting media option: {media_selection}")
         
+        # TODO: Fix change settings button
         # Click on change settings button
         if event == '-CHANGE_SETTINGS-':
             event, values = create_settings_window(settings).read(close=True)
@@ -347,6 +392,41 @@ def main():
                 window.close()
                 window = None
                 save_settings(settings_file, settings, values)
+
+            # setting_window = create_settings_window(settings)
+            # api_check = False
+            # home_check = False
+            # print(f"api_check: {api_check}")
+            # print(f"home_check: {home_check}")
+            # while not api_check or not home_check:
+            #     setting_event, setting_values = setting_window.read()
+            #     print(f"event: {event}")
+            #     print(f"values: {values}")
+            #     setting_window = {"pexels_api_key": f"{setting_values['-PEXELS API KEY-']}", "home": f"{setting_values['-HOME-']}"}
+
+            #     if setting_event == '-SAVE-':
+            #         api_check = check_api_key(settings)
+            #         home_check = check_home_dir(settings)
+            #         print(f"api_check: {api_check}")
+            #         print(f"home_check: {home_check}")
+            #         if api_check and home_check:
+            #             save_settings(settings_file, settings, setting_values)
+            #             setting_window.close()
+            #         elif not api_check and home_check:
+            #             setting_window['-OUTPUT-'].update("Invalid API Key")
+            #         elif api_check and not home_check:
+            #             setting_window['-OUTPUT-'].update("Invalid Home directory")
+            #         else:
+            #             setting_window['-OUTPUT-'].update("Invalid API Key or Home directory")
+                
+            #     # TODO: Clean exit
+            #     if setting_event in (sg.WIN_CLOSED, '-EXIT-'):
+            #         setting_window.close()
+
+            #     # Open URLs if they are clicked
+            #     if setting_event.startswith("URL"):
+            #         url = setting_event.split(" ")[1]
+            #         webbrowser.open(url)
         
         # Open URLs if they are clicked
         if event.startswith("URL"):
