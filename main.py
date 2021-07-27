@@ -198,18 +198,11 @@ def create_main_window(settings):
                     [sg.HSeparator()],
                     [sg.Listbox(values=sorted([i['title'] for i in collections], key=str.lower), 
                         size=(20, total_collections), key='-LIST-', enable_events=True)]]
-
     media_opt_panel = [[sg.Text("Media Selection")],
                             [sg.HSeparator()],
                             [Radio("-MEDIA_ALL-", "Photos and Videos", 2, default=True)],
                             [Radio("-MEDIA_PHOTOS-", "Photos Only", 2)],
                             [Radio("-MEDIA_VIDEOS-", "Videos Only", 2)]]
-                            # [sg.Radio(key="-MEDIA_ALL-", text="Photos and Videos", default=True, enable_events=True, 
-                            #     group_id=2)],
-                            # [sg.Radio(key="-MEDIA_PHOTOS-", text="Photos Only", enable_events=True, 
-                            #     group_id=2)],
-                            # [sg.Radio(key="-MEDIA_VIDEOS-", text="Videos Only", enable_events=True, 
-                            #     group_id=2)]]
     request_panel = [[sg.Text("Hourly request limit: 200")],
                         [sg.HSeparator()],
                         [sg.Text(text="Monthly requests left:")],
@@ -231,15 +224,6 @@ def create_main_window(settings):
                     [Radio("-QUALITY_PORTRAIT-", "Portrait", 1)],
                     [Radio("-QUALITY_LANDSCAPE-", "Landscape", 1)],
                     [Radio("-QUALITY_TINY-", "Tiny", 1)]]
-                    # [sg.Radio(key="-QUALITY_ORIGINAL-", text="Original", default=True, enable_events=True, 
-                    #     group_id=1)],
-                    # [sg.Radio(key="-QUALITY_2X-", text="Large 2x", enable_events=True, group_id=1)],
-                    # [sg.Radio(key="-QUALITY_LARGE-", text="Large", enable_events=True, group_id=1)],
-                    # [sg.Radio(key="-QUALITY_MEDIUM-", text="Medium", enable_events=True, group_id=1)],
-                    # [sg.Radio(key="-QUALITY_SMALL-", text="Small", enable_events=True, group_id=1)],
-                    # [sg.Radio(key="-QUALITY_PORTRAIT-", text="Portrait", enable_events=True, group_id=1)],
-                    # [sg.Radio(key="-QUALITY_LANDSCAPE-", text="Landscape", enable_events=True, group_id=1)],
-                    # [sg.Radio(key="-QUALITY_TINY-", text="Tiny", enable_events=True, group_id=1)]]
     layout = [[ sg.Column(left_col), sg.VSeparator(), sg.Column(mid_col), sg.VSeparator(), 
                     sg.Column(right_col)],
                 [sg.Text('Select download location'), 
@@ -259,11 +243,6 @@ def create_main_window(settings):
                     Link('https://www.pexels.com/', 'Photos provided by Pexels'),
                     sg.VSeparator(),
                     sg.Button(button_text='Credits', key="-CREDITS-")]]
-                # [sg.Text(key='URL https://github.com/thesamuraiwho', text='Developed by TheSamuraiWho', tooltip='https://github.com/thesamuraiwho', enable_events=True), 
-                #     sg.VSeparator(), 
-                #     sg.Text(key='URL https://www.pexels.com/', text='Photos provided by Pexels', tooltip='https://www.pexels.com/', enable_events=True),
-                #     sg.VSeparator(),
-                #     sg.Button(button_text='Credits', key="-CREDITS-")]]
     return sg.Window('Pexels Collection Downloader', layout), collections
 
 def main():
