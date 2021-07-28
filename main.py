@@ -34,12 +34,12 @@ class Media(enum.Enum):
 THEME = "Black"
 PER_PAGE = 80
 COLLECTION_API = "https://api.pexels.com/v1/collections/"
-quality_keys = ["-QUALITY_ORIGINAL-", "-QUALITY_2X-", "-QUALITY_LARGE-", "-QUALITY_MEDIUM-",
+QUALITY_KEYS = ["-QUALITY_ORIGINAL-", "-QUALITY_2X-", "-QUALITY_LARGE-", "-QUALITY_MEDIUM-",
     "-QUALITY_SMALL-", "-QUALITY_PORTRAIT-", "-QUALITY_LANDSCAPE-", "-QUALITY_TINY-"]
-quality_values = ["original", "large2x", "large", "medium", "small",
+QUALITY_VALUES = ["original", "large2x", "large", "medium", "small",
     "portrait", "landscape", "tiny"]
-media_keys = ["-MEDIA_ALL-", "-MEDIA_PHOTOS-", "-MEDIA_VIDEOS-"]
-media_values = ["photo_video", "photo", "video"]
+MEDIA_KEYS = ["-MEDIA_ALL-", "-MEDIA_PHOTOS-", "-MEDIA_VIDEOS-"]
+MEDIA_VALUES = ["photo_video", "photo", "video"]
 
 # "Map" from the settings dictionary keys to the window's element keys
 SETTINGS_KEYS_TO_ELEMENT_KEYS = {"pexels_api_key": "-PEXELS API KEY-", "home": "-HOME-"}
@@ -141,7 +141,6 @@ def load_settings(settings_file, default_settings):
         with open(settings_file, 'r') as f:
             settings = jsonload(f)
     except Exception as e:
-        # sg.popup_quick_message(f'exception {e}', 'No settings file found... will create one for you', keep_on_top=True, background_color='red', text_color='white')
         settings = default_settings
     return settings
 
@@ -151,12 +150,12 @@ def save_settings(settings_file, settings, values):
             try:
                 settings[key] = values[SETTINGS_KEYS_TO_ELEMENT_KEYS[key]]
             except Exception as e:
-                print(f'Problem updating settings from window values. Key = {key}')
+                print(f'{e}\tProblem updating settings from window values. Key = {key}')
 
     with open(settings_file, 'w') as f:
         jsondump(settings, f)
 
-    # sg.popup('Settings saved')
+    return settings
 
 ##################### Make a settings window #####################
 def create_settings_window(settings):
@@ -166,9 +165,10 @@ def create_settings_window(settings):
 
     layout = [  [TextLabel('Pexels API key'), sg.Input(key='-PEXELS API KEY-')],
                 [TextLabel('Home directory'), sg.Input(key='-HOME-'), sg.FolderBrowse(target='-HOME-')],
-                [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-EXIT-"), sg.Text(key='-OUTPUT-', text="", text_color="red", size=(30,1))],
+                [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-SETTINGS_EXIT-"), 
+                    sg.Text(key='-SETTINGS_OUTPUT-', text="", text_color="red", size=(30,1))],
                 [sg.Text(key='URL https://www.pexels.com/api/', text='Link to Pexels API', tooltip='https://www.pexels.com/api/', enable_events=True)]]
-    window = sg.Window('Settings', layout, keep_on_top=True, finalize=True)
+    window = sg.Window('Settings', layout, keep_on_top=True, finalize=True, no_titlebar=True)
 
     for key in SETTINGS_KEYS_TO_ELEMENT_KEYS:   # update window with the values read from settings file
         try:
@@ -194,26 +194,20 @@ def create_main_window(settings):
     monthly_req_left = req.headers['X-Ratelimit-Remaining']
     req_quota_reset = int(req.headers['X-Ratelimit-Reset'])
 
-    left_col = [[sg.Text("Collections")],
-                    [sg.HSeparator()],
+    left_col = [[sg.Text("Collections")], [sg.HSeparator()],
                     [sg.Listbox(values=sorted([i['title'] for i in collections], key=str.lower), 
                         size=(20, total_collections), key='-LIST-', enable_events=True)]]
-    media_opt_panel = [[sg.Text("Media Selection")],
-                            [sg.HSeparator()],
+    media_opt_panel = [[sg.Text("Media Selection")], [sg.HSeparator()],
                             [Radio("-MEDIA_ALL-", "Photos and Videos", 2, default=True)],
                             [Radio("-MEDIA_PHOTOS-", "Photos Only", 2)],
                             [Radio("-MEDIA_VIDEOS-", "Videos Only", 2)]]
-    request_panel = [[sg.Text("Hourly request limit: 200")],
-                        [sg.HSeparator()],
+    request_panel = [[sg.Text("Hourly request limit: 200")], [sg.HSeparator()],
                         [sg.Text(text="Monthly requests left:")],
-                        [sg.Text(key="-REMAINING_REQ-", text=f"{monthly_req_left}")],
-                        [sg.HSeparator()],
+                        [sg.Text(key="-REMAINING_REQ-", text=f"{monthly_req_left}")], [sg.HSeparator()],
                         [sg.Text(text="Request quota resets:")],
                         [sg.Text(key="-REQ_QUOTA_RESET-", text=f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")]]
-    mid_col = [[sg.Text("Collection Description")],
-                [sg.HSeparator()],
+    mid_col = [[sg.Text("Collection Description")], [sg.HSeparator()],
                 [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]] + [[sg.Text()]] + request_panel #+ media_opt_panel
-
     right_col = media_opt_panel + [[sg.HSeparator()], [sg.HSeparator()]] + [[sg.Text('Collection Photo Quality')],
                     [sg.HSeparator()],
                     [Radio("-QUALITY_ORIGINAL-", "Original", 1, default=True)],
@@ -247,13 +241,7 @@ def create_main_window(settings):
 
 def main():
     window, settings = None, load_settings(settings_file, default_settings)
-    quality_keys = ["-QUALITY_ORIGINAL-", "-QUALITY_2X-", "-QUALITY_LARGE-", "-QUALITY_MEDIUM-",
-        "-QUALITY_SMALL-", "-QUALITY_PORTRAIT-", "-QUALITY_LANDSCAPE-", "-QUALITY_TINY-"]
-    quality_values = ["original", "large2x", "large", "medium", "small",
-        "portrait", "landscape", "tiny"]
     quality_selection = "original"
-    media_keys = ["-MEDIA_ALL-", "-MEDIA_PHOTOS-", "-MEDIA_VIDEOS-"]
-    media_values = ["photo_video", "photo", "video"]
     media_selection = "photo_video"
 
     while True: # Event Loop
@@ -266,7 +254,8 @@ def main():
                 while not api_check or not home_check:
                     event, values = window.read()
                     print(f"event: {event}\nvalues: {values}")
-                    settings = {"pexels_api_key": f"{values['-PEXELS API KEY-']}", "home": f"{values['-HOME-']}"}
+                    if values:
+                        settings = {"pexels_api_key": f"{values['-PEXELS API KEY-']}", "home": f"{values['-HOME-']}"}
 
                     if event == '-SAVE-':
                         api_check = check_api_key(settings)
@@ -277,14 +266,13 @@ def main():
                             save_settings(settings_file, settings, values)
                             window.close()
                         elif not api_check and home_check:
-                            window['-OUTPUT-'].update("Invalid API Key")
+                            window['-SETTINGS_OUTPUT-'].update("Invalid API Key")
                         elif api_check and not home_check:
-                            window['-OUTPUT-'].update("Invalid Home directory")
+                            window['-SETTINGS_OUTPUT-'].update("Invalid Home directory")
                         else:
-                            window['-OUTPUT-'].update("Invalid API Key or Home directory")
+                            window['-SETTINGS_OUTPUT-'].update("Invalid API Key or Home directory")
                     
-                    # TODO: Clean exit
-                    if event in (sg.WIN_CLOSED, '-EXIT-'):
+                    if event in (sg.WIN_CLOSED, '-SETTINGS_EXIT-'):
                         exit()
 
                     if event.startswith("URL"): # Open URLs if they are clicked
@@ -348,26 +336,57 @@ def main():
                 window['-REMAINING_REQ-'].update(f"{monthly_req_left}")
                 window['-REQ_QUOTA_RESET-'].update(f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")
         
-        if event in quality_keys: # Show photo quality radio selection
-            for i in range(len(quality_keys)): # Check the selected quality
-                if values[quality_keys[i]]:
-                    quality_selection = quality_values[i]
+        if event in QUALITY_KEYS: # Show photo quality radio selection
+            for i in range(len(QUALITY_KEYS)): # Check the selected quality
+                if values[QUALITY_KEYS[i]]:
+                    quality_selection = QUALITY_VALUES[i]
             window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Selecting photo quality: {quality_selection}")
         
-        if event in media_keys: # Show media radio selection
-            for i in range(len(media_keys)): # Check for selected media option
-                if values[media_keys[i]]:
-                    media_selection = media_values[i]
+        if event in MEDIA_KEYS: # Show media radio selection
+            for i in range(len(MEDIA_KEYS)): # Check for selected media option
+                if values[MEDIA_KEYS[i]]:
+                    media_selection = MEDIA_VALUES[i]
             window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Selecting media option: {media_selection}")
         
-        # TODO: Fix change settings button
-        # Click on change settings button
-        if event == '-CHANGE_SETTINGS-':
-            event, values = create_settings_window(settings).read(close=True)
-            if event == '-SAVE-':
-                window.close()
-                window = None
-                save_settings(settings_file, settings, values)
+        if event == '-CHANGE_SETTINGS-': # Click on change settings button            
+            settings_window = create_settings_window(settings)
+            exit_loop = False
+
+            while not exit_loop:
+                settings_event, settings_values = settings_window.read()
+                if settings_values:
+                    settings = {"pexels_api_key": f"{settings_values['-PEXELS API KEY-']}", 
+                        "home": f"{settings_values['-HOME-']}"}
+                print(f"event: {settings_event}\nvalues: {settings_values}")
+
+                if settings_event == '-SAVE-':
+                    api_check = check_api_key(settings)
+                    home_check = check_home_dir(settings)
+                    print(f"api_check: {api_check}")
+                    print(f"home_check: {home_check}")
+                    if api_check and home_check:
+                        save_settings(settings_file, settings, values)
+                        exit_loop = True
+                        settings_window.close()
+                    elif not api_check and home_check:
+                        settings_window['-SETTINGS_OUTPUT-'].update("Invalid API Key")
+                    elif api_check and not home_check:
+                        settings_window['-SETTINGS_OUTPUT-'].update("Invalid Home directory")
+                    else:
+                        settings_window['-SETTINGS_OUTPUT-'].update("Invalid API Key or Home directory")
+                
+                if settings_event == '-SETTINGS_EXIT-':
+                    exit_loop = True
+                    settings_window.close()
+
+                if settings_event == sg.WIN_CLOSED:
+                    pass
+
+                if settings_event.startswith("URL"): # Open URLs if they are clicked
+                    url = settings_event.split(" ")[1]
+                    webbrowser.open(url)
+            
+            window['-DOWNLOAD_LOCATION-'].update(value=str(settings['home']) + "/")
         
         # Open URLs if they are clicked
         if event.startswith("URL"):
