@@ -179,8 +179,6 @@ def create_main_window(settings):
 
     auth = {'Authorization': str(settings["pexels_api_key"])}
     req = requests.get(COLLECTION_API, headers=auth)
-    print(auth)
-    print(req)
     total_collections = req.json()["total_results"]
     collections = get_json(f"{COLLECTION_API}", auth, total_collections, 'collections')
     # monthly_req_left = req.headers['X-Ratelimit-Remaining']
