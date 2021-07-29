@@ -12,15 +12,13 @@ import requests
 from json import (load as jsonload, dump as jsondump)
 from os import path
 import math
-# import pprint
 import enum
 from datetime import datetime
 import webbrowser
 
 # Globals
-# pp = pprint.PrettyPrinter(indent=4)
-monthly_req_left = 0
-req_quota_reset = 0
+# monthly_req_left = 0
+# req_quota_reset = 0
 api_key_valid = False
 home_dir_valid = False
 
@@ -62,7 +60,7 @@ settings_file = "settings.json"
 
 def check_api_key(settings): # Check API Key
     auth = {'Authorization': str(settings["pexels_api_key"])}
-    print(f'settings["pexels_api_key"]: {settings["pexels_api_key"]}')
+    # print(f'settings["pexels_api_key"]: {settings["pexels_api_key"]}')
     req = requests.get(COLLECTION_API, headers=auth)
     status = req.status_code
     if status == 200:
@@ -77,9 +75,6 @@ def check_api_key(settings): # Check API Key
         api_key_valid = False
     elif status == 429:
         print("Too many requests")
-    else:
-        print(req.status_code)
-    
     return False
 
 def check_home_dir(settings): # Check Home directory
@@ -123,11 +118,6 @@ def get_json(url, auth, total_collections, field):
         iterations = math.ceil(total_collections / PER_PAGE)
     while count < iterations:
         req = requests.get(f"{url}?page={count + 1}&per_page={PER_PAGE}", headers=auth)
-        monthly_req_left = req.headers['X-Ratelimit-Remaining']
-        req_quota_reset = int(req.headers['X-Ratelimit-Reset'])
-
-        print(f"{monthly_req_left}\n{req_quota_reset}\n")
-        
         json += req.json()[field]
         count += 1
     return json
@@ -189,10 +179,12 @@ def create_main_window(settings):
 
     auth = {'Authorization': str(settings["pexels_api_key"])}
     req = requests.get(COLLECTION_API, headers=auth)
+    print(auth)
+    print(req)
     total_collections = req.json()["total_results"]
     collections = get_json(f"{COLLECTION_API}", auth, total_collections, 'collections')
-    monthly_req_left = req.headers['X-Ratelimit-Remaining']
-    req_quota_reset = int(req.headers['X-Ratelimit-Reset'])
+    # monthly_req_left = req.headers['X-Ratelimit-Remaining']
+    # req_quota_reset = int(req.headers['X-Ratelimit-Reset'])
 
     left_col = [[sg.Text("Collections")], [sg.HSeparator()],
                     [sg.Listbox(values=sorted([i['title'] for i in collections], key=str.lower), 
@@ -201,13 +193,13 @@ def create_main_window(settings):
                             [Radio("-MEDIA_ALL-", "Photos and Videos", 2, default=True)],
                             [Radio("-MEDIA_PHOTOS-", "Photos Only", 2)],
                             [Radio("-MEDIA_VIDEOS-", "Videos Only", 2)]]
-    request_panel = [[sg.Text("Hourly request limit: 200")], [sg.HSeparator()],
-                        [sg.Text(text="Monthly requests left:")],
-                        [sg.Text(key="-REMAINING_REQ-", text=f"{monthly_req_left}")], [sg.HSeparator()],
-                        [sg.Text(text="Request quota resets:")],
-                        [sg.Text(key="-REQ_QUOTA_RESET-", text=f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")]]
+    # request_panel = [[sg.Text("Hourly request limit: 200")], [sg.HSeparator()],
+    #                     [sg.Text(text="Monthly requests left:")],
+    #                     [sg.Text(key="-REMAINING_REQ-", text=f"{monthly_req_left}")], [sg.HSeparator()],
+    #                     [sg.Text(text="Request quota resets:")],
+    #                     [sg.Text(key="-REQ_QUOTA_RESET-", text=f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")]]
     mid_col = [[sg.Text("Collection Description")], [sg.HSeparator()],
-                [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]] + [[sg.Text()]] + request_panel #+ media_opt_panel
+                [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]] + [[sg.Text()]] #+ request_panel
     right_col = media_opt_panel + [[sg.HSeparator()], [sg.HSeparator()]] + [[sg.Text('Collection Photo Quality')],
                     [sg.HSeparator()],
                     [Radio("-QUALITY_ORIGINAL-", "Original", 1, default=True)],
@@ -228,7 +220,7 @@ def create_main_window(settings):
                 [sg.FileBrowse(key="-OUTPUT_VIEWER-", button_text="View Downloads", 
                     file_types=(("ALL Files", "*.*"), ("JPEG Files", "*.jpeg"), ("MP4 Files", "*.mp4"),),
                     initial_folder=str(settings['home']) + "/", enable_events=True)],
-                [sg.MLine(key="-OUTPUT-" + sg.WRITE_ONLY_KEY, size=(74, 5), write_only=True)],
+                [sg.MLine(key="-OUTPUT-", size=(74, 5), write_only=True)],
                 [sg.Button(button_text='Download', key="-DOWNLOAD-"), 
                     sg.Button(button_text='Exit', key="-EXIT-"),
                     sg.Button(button_text='Change Settings', key="-CHANGE_SETTINGS-")],
@@ -250,18 +242,17 @@ def main():
                 window = create_settings_window(settings)
                 api_check = check_api_key(settings)
                 home_check = check_home_dir(settings)
-                print(f"api_check: {api_check}\nhome_check: {home_check}")
+                # print(f"api_check: {api_check}\nhome_check: {home_check}")
                 while not api_check or not home_check:
                     event, values = window.read()
-                    print(f"event: {event}\nvalues: {values}")
+                    # print(f"event: {event}\nvalues: {values}")
                     if values:
                         settings = {"pexels_api_key": f"{values['-PEXELS API KEY-']}", "home": f"{values['-HOME-']}"}
 
                     if event == '-SAVE-':
                         api_check = check_api_key(settings)
                         home_check = check_home_dir(settings)
-                        print(f"api_check: {api_check}")
-                        print(f"home_check: {home_check}")
+                        # print(f"api_check: {api_check}\nhome_check: {home_check}")
                         if api_check and home_check:
                             save_settings(settings_file, settings, values)
                             window.close()
@@ -281,15 +272,15 @@ def main():
             window, collections = create_main_window(settings)
 
         event, values = window.read()
-        print(f"event: {event}")
-        print(f"values: {values}")
+        # print(f"event: {event}")
+        # print(f"values: {values}")
         
         if event in (sg.WIN_CLOSED, '-EXIT-'):
             break
 
         if event == '-LIST-': # Select a collection from the listbox
             selection = [i for i in collections if values['-LIST-'][0] == i['title']][0]
-            window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Selecting: {selection['title']}")
+            window['-OUTPUT-'].print(f"Selecting: {selection['title']}")
             window['-DESCRIPTION-'].update(f"Title: {selection['title']}\n"
                                             f"ID: {selection['id']}\n"                                            
                                             f"Total media count: {selection['media_count']}\n"
@@ -303,50 +294,48 @@ def main():
 
         if event == '-DOWNLOAD-': # Click on download button itself
             if values['-LIST-']:
+                window['-OUTPUT-'].print(f"Downloading...")
                 auth = {'Authorization': str(settings["pexels_api_key"])}
                 collection_media = get_json(f"{COLLECTION_API}{selection['id']}", auth, 
                     selection['media_count'], 'media')
-                    
+                
                 # Create photos and video lists for download, download, and return successful/failed urls
                 if media_selection == "photo_video":
                     photos = [i['src'][quality_selection] for i in collection_media if i['type'] == 'Photo']
                     videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total photos in {selection['title']}: {len(photos)}")
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total videos in {selection['title']}: {len(videos)}")
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total media count in {selection['title']}: {len(photos) + len(videos)}")
+                    window['-OUTPUT-'].print(f"Total photos in {selection['title']}: {len(photos)}")
+                    window['-OUTPUT-'].print(f"Total videos in {selection['title']}: {len(videos)}")
+                    window['-OUTPUT-'].print(f"Total media count in {selection['title']}: {len(photos) + len(videos)}")
                     broken_photos, good_photos = download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Good photo urls: {good_photos}")
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Broken photo urls: {broken_photos}")
+                    window['-OUTPUT-'].print(f"Good photo urls: {good_photos}")
+                    window['-OUTPUT-'].print(f"Broken photo urls: {broken_photos}")
                     broken_videos, good_videos = download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Good video urls: {good_videos}")
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Broken video urls: {broken_videos}")
+                    window['-OUTPUT-'].print(f"Good video urls: {good_videos}")
+                    window['-OUTPUT-'].print(f"Broken video urls: {broken_videos}")
                 elif media_selection == "photo":
                     photos = [i['src'][quality_selection] for i in collection_media if i['type'] == 'Photo']
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total photos in {selection['title']}: {len(photos)}")
+                    window['-OUTPUT-'].print(f"Total photos in {selection['title']}: {len(photos)}")
                     broken_photos, good_photos = download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Good photo urls: {good_photos}")
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Broken photo urls: {broken_photos}")
+                    window['-OUTPUT-'].print(f"Good photo urls: {good_photos}")
+                    window['-OUTPUT-'].print(f"Broken photo urls: {broken_photos}")
                 else:
                     videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Total videos in {selection['title']}: {len(videos)}")
+                    window['-OUTPUT-'].print(f"Total videos in {selection['title']}: {len(videos)}")
                     broken_videos, good_videos = download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Good video urls: {good_videos}")
-                    window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Broken video urls: {broken_videos}")
-                
-                window['-REMAINING_REQ-'].update(f"{monthly_req_left}")
-                window['-REQ_QUOTA_RESET-'].update(f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")
+                    window['-OUTPUT-'].print(f"Good video urls: {good_videos}")
+                    window['-OUTPUT-'].print(f"Broken video urls: {broken_videos}")
         
         if event in QUALITY_KEYS: # Show photo quality radio selection
             for i in range(len(QUALITY_KEYS)): # Check the selected quality
                 if values[QUALITY_KEYS[i]]:
                     quality_selection = QUALITY_VALUES[i]
-            window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Selecting photo quality: {quality_selection}")
+            window['-OUTPUT-'].print(f"Selecting photo quality: {quality_selection}")
         
         if event in MEDIA_KEYS: # Show media radio selection
             for i in range(len(MEDIA_KEYS)): # Check for selected media option
                 if values[MEDIA_KEYS[i]]:
                     media_selection = MEDIA_VALUES[i]
-            window['-OUTPUT-' + sg.WRITE_ONLY_KEY].print(f"Selecting media option: {media_selection}")
+            window['-OUTPUT-'].print(f"Selecting media option: {media_selection}")
         
         if event == '-CHANGE_SETTINGS-': # Click on change settings button            
             settings_window = create_settings_window(settings)
@@ -357,13 +346,13 @@ def main():
                 if settings_values:
                     settings = {"pexels_api_key": f"{settings_values['-PEXELS API KEY-']}", 
                         "home": f"{settings_values['-HOME-']}"}
-                print(f"event: {settings_event}\nvalues: {settings_values}")
+                # print(f"event: {settings_event}\nvalues: {settings_values}")
 
                 if settings_event == '-SAVE-':
                     api_check = check_api_key(settings)
                     home_check = check_home_dir(settings)
-                    print(f"api_check: {api_check}")
-                    print(f"home_check: {home_check}")
+                    # print(f"api_check: {api_check}")
+                    # print(f"home_check: {home_check}")
                     if api_check and home_check:
                         save_settings(settings_file, settings, values)
                         exit_loop = True
@@ -385,7 +374,6 @@ def main():
                 if settings_event.startswith("URL"): # Open URLs if they are clicked
                     url = settings_event.split(" ")[1]
                     webbrowser.open(url)
-            
             window['-DOWNLOAD_LOCATION-'].update(value=str(settings['home']) + "/")
         
         # Open URLs if they are clicked
