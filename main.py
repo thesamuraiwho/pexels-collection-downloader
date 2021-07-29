@@ -179,55 +179,62 @@ def create_main_window(settings):
 
     auth = {'Authorization': str(settings["pexels_api_key"])}
     req = requests.get(COLLECTION_API, headers=auth)
-    total_collections = req.json()["total_results"]
-    collections = get_json(f"{COLLECTION_API}", auth, total_collections, 'collections')
-    # monthly_req_left = req.headers['X-Ratelimit-Remaining']
-    # req_quota_reset = int(req.headers['X-Ratelimit-Reset'])
+    if req.status_code == 200:
+        total_collections = req.json()["total_results"]
+        collections = get_json(f"{COLLECTION_API}", auth, total_collections, 'collections')
+        # monthly_req_left = req.headers['X-Ratelimit-Remaining']
+        # req_quota_reset = int(req.headers['X-Ratelimit-Reset'])
 
-    left_col = [[sg.Text("Collections")], [sg.HSeparator()],
-                    [sg.Listbox(values=sorted([i['title'] for i in collections], key=str.lower), 
-                        size=(20, total_collections), key='-LIST-', enable_events=True)]]
-    media_opt_panel = [[sg.Text("Media Selection")], [sg.HSeparator()],
-                            [Radio("-MEDIA_ALL-", "Photos and Videos", 2, default=True)],
-                            [Radio("-MEDIA_PHOTOS-", "Photos Only", 2)],
-                            [Radio("-MEDIA_VIDEOS-", "Videos Only", 2)]]
-    # request_panel = [[sg.Text("Hourly request limit: 200")], [sg.HSeparator()],
-    #                     [sg.Text(text="Monthly requests left:")],
-    #                     [sg.Text(key="-REMAINING_REQ-", text=f"{monthly_req_left}")], [sg.HSeparator()],
-    #                     [sg.Text(text="Request quota resets:")],
-    #                     [sg.Text(key="-REQ_QUOTA_RESET-", text=f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")]]
-    mid_col = [[sg.Text("Collection Description")], [sg.HSeparator()],
-                [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]] + [[sg.Text()]] #+ request_panel
-    right_col = media_opt_panel + [[sg.HSeparator()], [sg.HSeparator()]] + [[sg.Text('Collection Photo Quality')],
-                    [sg.HSeparator()],
-                    [Radio("-QUALITY_ORIGINAL-", "Original", 1, default=True)],
-                    [Radio("-QUALITY_2X-", "Large 2x", 1)],
-                    [Radio("-QUALITY_LARGE-", "Large", 1)],
-                    [Radio("-QUALITY_MEDIUM-", "Medium", 1)],
-                    [Radio("-QUALITY_SMALL-", "Small", 1)],
-                    [Radio("-QUALITY_PORTRAIT-", "Portrait", 1)],
-                    [Radio("-QUALITY_LANDSCAPE-", "Landscape", 1)],
-                    [Radio("-QUALITY_TINY-", "Tiny", 1)]]
-    layout = [[ sg.Column(left_col), sg.VSeparator(), sg.Column(mid_col), sg.VSeparator(), 
-                    sg.Column(right_col)],
-                [sg.Text('Select download location'), 
-                    sg.InputText(key="-DOWNLOAD_LOCATION-", default_text=str(settings['home']) + "/", 
-                        readonly=True, disabled_readonly_background_color="#4d4d4d",enable_events=True), 
-                    sg.FolderBrowse(key="-DOWNLOAD_BROWSER-", target="-DOWNLOAD_LOCATION-", 
-                        initial_folder=str(settings['home']) + "/")],
-                [sg.FileBrowse(key="-OUTPUT_VIEWER-", button_text="View Downloads", 
-                    file_types=(("ALL Files", "*.*"), ("JPEG Files", "*.jpeg"), ("MP4 Files", "*.mp4"),),
-                    initial_folder=str(settings['home']) + "/", enable_events=True)],
-                [sg.MLine(key="-OUTPUT-", size=(74, 5), write_only=True)],
-                [sg.Button(button_text='Download', key="-DOWNLOAD-"), 
-                    sg.Button(button_text='Exit', key="-EXIT-"),
-                    sg.Button(button_text='Change Settings', key="-CHANGE_SETTINGS-")],
-                [Link('https://github.com/thesamuraiwho', 'Developed by TheSamuraiWho'), 
-                    sg.VSeparator(), 
-                    Link('https://www.pexels.com/', 'Photos provided by Pexels'),
-                    sg.VSeparator(),
-                    sg.Button(button_text='Credits', key="-CREDITS-")]]
-    return sg.Window('Pexels Collection Downloader', layout), collections
+        left_col = [[sg.Text("Collections")], [sg.HSeparator()],
+                        [sg.Listbox(values=sorted([i['title'] for i in collections], key=str.lower), 
+                            size=(20, total_collections), key='-LIST-', enable_events=True)]]
+        media_opt_panel = [[sg.Text("Media Selection")], [sg.HSeparator()],
+                                [Radio("-MEDIA_ALL-", "Photos and Videos", 2, default=True)],
+                                [Radio("-MEDIA_PHOTOS-", "Photos Only", 2)],
+                                [Radio("-MEDIA_VIDEOS-", "Videos Only", 2)]]
+        # request_panel = [[sg.Text("Hourly request limit: 200")], [sg.HSeparator()],
+        #                     [sg.Text(text="Monthly requests left:")],
+        #                     [sg.Text(key="-REMAINING_REQ-", text=f"{monthly_req_left}")], [sg.HSeparator()],
+        #                     [sg.Text(text="Request quota resets:")],
+        #                     [sg.Text(key="-REQ_QUOTA_RESET-", text=f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")]]
+        mid_col = [[sg.Text("Collection Description")], [sg.HSeparator()],
+                    [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]] + [[sg.Text()]] #+ request_panel
+        right_col = media_opt_panel + [[sg.HSeparator()], [sg.HSeparator()]] + [[sg.Text('Collection Photo Quality')],
+                        [sg.HSeparator()],
+                        [Radio("-QUALITY_ORIGINAL-", "Original", 1, default=True)],
+                        [Radio("-QUALITY_2X-", "Large 2x", 1)],
+                        [Radio("-QUALITY_LARGE-", "Large", 1)],
+                        [Radio("-QUALITY_MEDIUM-", "Medium", 1)],
+                        [Radio("-QUALITY_SMALL-", "Small", 1)],
+                        [Radio("-QUALITY_PORTRAIT-", "Portrait", 1)],
+                        [Radio("-QUALITY_LANDSCAPE-", "Landscape", 1)],
+                        [Radio("-QUALITY_TINY-", "Tiny", 1)]]
+        layout = [[ sg.Column(left_col), sg.VSeparator(), sg.Column(mid_col), sg.VSeparator(), 
+                        sg.Column(right_col)],
+                    [sg.Text('Select download location'), 
+                        sg.InputText(key="-DOWNLOAD_LOCATION-", default_text=str(settings['home']) + "/", 
+                            readonly=True, disabled_readonly_background_color="#4d4d4d",enable_events=True), 
+                        sg.FolderBrowse(key="-DOWNLOAD_BROWSER-", target="-DOWNLOAD_LOCATION-", 
+                            initial_folder=str(settings['home']) + "/")],
+                    [sg.FileBrowse(key="-OUTPUT_VIEWER-", button_text="View Downloads", 
+                        file_types=(("ALL Files", "*.*"), ("JPEG Files", "*.jpeg"), ("MP4 Files", "*.mp4"),),
+                        initial_folder=str(settings['home']) + "/", enable_events=True)],
+                    [sg.MLine(key="-OUTPUT-", size=(74, 5), write_only=True)],
+                    [sg.Button(button_text='Download', key="-DOWNLOAD-"), 
+                        sg.Button(button_text='Exit', key="-EXIT-"),
+                        sg.Button(button_text='Change Settings', key="-CHANGE_SETTINGS-")],
+                    [Link('https://github.com/thesamuraiwho', 'Developed by TheSamuraiWho'), 
+                        sg.VSeparator(), 
+                        Link('https://www.pexels.com/', 'Photos provided by Pexels'),
+                        sg.VSeparator(),
+                        sg.Button(button_text='Credits', key="-CREDITS-")]]
+        return sg.Window('Pexels Collection Downloader', layout), collections
+    else:
+        layout = [[sg.popup("Issue with API. Please try again later.", auto_close=True,
+            auto_close_duration=120, any_key_closes=True)]]
+        collections = {}
+        return layout, collections
+   
 
 def main():
     window, settings = None, load_settings(settings_file, default_settings)
@@ -269,120 +276,122 @@ def main():
                         webbrowser.open(url)
             window, collections = create_main_window(settings)
 
-        event, values = window.read()
-        # print(f"event: {event}")
-        # print(f"values: {values}")
-        
-        if event in (sg.WIN_CLOSED, '-EXIT-'):
-            break
+        if collections != {}:
+            event, values = window.read()
+            # print(f"event: {event}")
+            # print(f"values: {values}")
+            
+            if event in (sg.WIN_CLOSED, '-EXIT-'):
+                break
 
-        if event == '-LIST-': # Select a collection from the listbox
-            selection = [i for i in collections if values['-LIST-'][0] == i['title']][0]
-            window['-OUTPUT-'].print(f"Selecting: {selection['title']}")
-            window['-DESCRIPTION-'].update(f"Title: {selection['title']}\n"
-                                            f"ID: {selection['id']}\n"                                            
-                                            f"Total media count: {selection['media_count']}\n"
-                                            f"Photos count: {selection['photos_count']}\n"
-                                            f"Videos count: {selection['videos_count']}\n"
-                                            f"\nDescription: {selection['description']}\n\n")
+            if event == '-LIST-': # Select a collection from the listbox
+                selection = [i for i in collections if values['-LIST-'][0] == i['title']][0]
+                window['-OUTPUT-'].print(f"Selecting: {selection['title']}")
+                window['-DESCRIPTION-'].update(f"Title: {selection['title']}\n"
+                                                f"ID: {selection['id']}\n"                                            
+                                                f"Total media count: {selection['media_count']}\n"
+                                                f"Photos count: {selection['photos_count']}\n"
+                                                f"Videos count: {selection['videos_count']}\n"
+                                                f"\nDescription: {selection['description']}\n\n")
 
-        if event == '-DOWNLOAD_LOCATION-': # Click on download browser button
-            if values['-DOWNLOAD_LOCATION-'][-1] != "/":
-                window['-DOWNLOAD_LOCATION-'].update(values['-DOWNLOAD_LOCATION-'] + "/")
+            if event == '-DOWNLOAD_LOCATION-': # Click on download browser button
+                if values['-DOWNLOAD_LOCATION-'][-1] != "/":
+                    window['-DOWNLOAD_LOCATION-'].update(values['-DOWNLOAD_LOCATION-'] + "/")
 
-        if event == '-DOWNLOAD-': # Click on download button itself
-            if values['-LIST-']:
-                window['-OUTPUT-'].print(f"Downloading...")
-                auth = {'Authorization': str(settings["pexels_api_key"])}
-                collection_media = get_json(f"{COLLECTION_API}{selection['id']}", auth, 
-                    selection['media_count'], 'media')
-                
-                # Create photos and video lists for download, download, and return successful/failed urls
-                if media_selection == "photo_video":
-                    photos = [i['src'][quality_selection] for i in collection_media if i['type'] == 'Photo']
-                    videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
-                    window['-OUTPUT-'].print(f"Total photos in {selection['title']}: {len(photos)}")
-                    window['-OUTPUT-'].print(f"Total videos in {selection['title']}: {len(videos)}")
-                    window['-OUTPUT-'].print(f"Total media count in {selection['title']}: {len(photos) + len(videos)}")
-                    broken_photos, good_photos = download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
-                    window['-OUTPUT-'].print(f"Good photo urls: {good_photos}")
-                    window['-OUTPUT-'].print(f"Broken photo urls: {broken_photos}")
-                    broken_videos, good_videos = download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
-                    window['-OUTPUT-'].print(f"Good video urls: {good_videos}")
-                    window['-OUTPUT-'].print(f"Broken video urls: {broken_videos}")
-                elif media_selection == "photo":
-                    photos = [i['src'][quality_selection] for i in collection_media if i['type'] == 'Photo']
-                    window['-OUTPUT-'].print(f"Total photos in {selection['title']}: {len(photos)}")
-                    broken_photos, good_photos = download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
-                    window['-OUTPUT-'].print(f"Good photo urls: {good_photos}")
-                    window['-OUTPUT-'].print(f"Broken photo urls: {broken_photos}")
-                else:
-                    videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
-                    window['-OUTPUT-'].print(f"Total videos in {selection['title']}: {len(videos)}")
-                    broken_videos, good_videos = download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
-                    window['-OUTPUT-'].print(f"Good video urls: {good_videos}")
-                    window['-OUTPUT-'].print(f"Broken video urls: {broken_videos}")
-        
-        if event in QUALITY_KEYS: # Show photo quality radio selection
-            for i in range(len(QUALITY_KEYS)): # Check the selected quality
-                if values[QUALITY_KEYS[i]]:
-                    quality_selection = QUALITY_VALUES[i]
-            window['-OUTPUT-'].print(f"Selecting photo quality: {quality_selection}")
-        
-        if event in MEDIA_KEYS: # Show media radio selection
-            for i in range(len(MEDIA_KEYS)): # Check for selected media option
-                if values[MEDIA_KEYS[i]]:
-                    media_selection = MEDIA_VALUES[i]
-            window['-OUTPUT-'].print(f"Selecting media option: {media_selection}")
-        
-        if event == '-CHANGE_SETTINGS-': # Click on change settings button            
-            settings_window = create_settings_window(settings)
-            exit_loop = False
+            if event == '-DOWNLOAD-': # Click on download button itself
+                if values['-LIST-']:
+                    window['-OUTPUT-'].print(f"Downloading...")
+                    auth = {'Authorization': str(settings["pexels_api_key"])}
+                    collection_media = get_json(f"{COLLECTION_API}{selection['id']}", auth, 
+                        selection['media_count'], 'media')
+                    
+                    # Create photos and video lists for download, download, and return successful/failed urls
+                    if media_selection == "photo_video":
+                        photos = [i['src'][quality_selection] for i in collection_media if i['type'] == 'Photo']
+                        videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
+                        window['-OUTPUT-'].print(f"Total photos in {selection['title']}: {len(photos)}")
+                        window['-OUTPUT-'].print(f"Total videos in {selection['title']}: {len(videos)}")
+                        window['-OUTPUT-'].print(f"Total media count in {selection['title']}: {len(photos) + len(videos)}")
+                        broken_photos, good_photos = download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
+                        window['-OUTPUT-'].print(f"Good photo urls: {good_photos}")
+                        window['-OUTPUT-'].print(f"Broken photo urls: {broken_photos}")
+                        broken_videos, good_videos = download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
+                        window['-OUTPUT-'].print(f"Good video urls: {good_videos}")
+                        window['-OUTPUT-'].print(f"Broken video urls: {broken_videos}")
+                    elif media_selection == "photo":
+                        photos = [i['src'][quality_selection] for i in collection_media if i['type'] == 'Photo']
+                        window['-OUTPUT-'].print(f"Total photos in {selection['title']}: {len(photos)}")
+                        broken_photos, good_photos = download_media(photos, values['-DOWNLOAD_LOCATION-'], Media.photo)
+                        window['-OUTPUT-'].print(f"Good photo urls: {good_photos}")
+                        window['-OUTPUT-'].print(f"Broken photo urls: {broken_photos}")
+                    else:
+                        videos = ["https://www.pexels.com/video/" + str(i['id']) + "/download" for i in collection_media if i['type'] == 'Video']
+                        window['-OUTPUT-'].print(f"Total videos in {selection['title']}: {len(videos)}")
+                        broken_videos, good_videos = download_media(videos, values['-DOWNLOAD_LOCATION-'], Media.video)
+                        window['-OUTPUT-'].print(f"Good video urls: {good_videos}")
+                        window['-OUTPUT-'].print(f"Broken video urls: {broken_videos}")
+            
+            if event in QUALITY_KEYS: # Show photo quality radio selection
+                for i in range(len(QUALITY_KEYS)): # Check the selected quality
+                    if values[QUALITY_KEYS[i]]:
+                        quality_selection = QUALITY_VALUES[i]
+                window['-OUTPUT-'].print(f"Selecting photo quality: {quality_selection}")
+            
+            if event in MEDIA_KEYS: # Show media radio selection
+                for i in range(len(MEDIA_KEYS)): # Check for selected media option
+                    if values[MEDIA_KEYS[i]]:
+                        media_selection = MEDIA_VALUES[i]
+                window['-OUTPUT-'].print(f"Selecting media option: {media_selection}")
+            
+            if event == '-CHANGE_SETTINGS-': # Click on change settings button            
+                settings_window = create_settings_window(settings)
+                exit_loop = False
 
-            while not exit_loop:
-                settings_event, settings_values = settings_window.read()
-                if settings_values:
-                    settings = {"pexels_api_key": f"{settings_values['-PEXELS API KEY-']}", 
-                        "home": f"{settings_values['-HOME-']}"}
-                # print(f"event: {settings_event}\nvalues: {settings_values}")
+                while not exit_loop:
+                    settings_event, settings_values = settings_window.read()
+                    if settings_values:
+                        settings = {"pexels_api_key": f"{settings_values['-PEXELS API KEY-']}", 
+                            "home": f"{settings_values['-HOME-']}"}
+                    # print(f"event: {settings_event}\nvalues: {settings_values}")
 
-                if settings_event == '-SAVE-':
-                    api_check = check_api_key(settings)
-                    home_check = check_home_dir(settings)
-                    # print(f"api_check: {api_check}")
-                    # print(f"home_check: {home_check}")
-                    if api_check and home_check:
-                        save_settings(settings_file, settings, values)
+                    if settings_event == '-SAVE-':
+                        api_check = check_api_key(settings)
+                        home_check = check_home_dir(settings)
+                        # print(f"api_check: {api_check}")
+                        # print(f"home_check: {home_check}")
+                        if api_check and home_check:
+                            save_settings(settings_file, settings, values)
+                            exit_loop = True
+                            settings_window.close()
+                        elif not api_check and home_check:
+                            settings_window['-SETTINGS_OUTPUT-'].update("Invalid API Key")
+                        elif api_check and not home_check:
+                            settings_window['-SETTINGS_OUTPUT-'].update("Invalid Home directory")
+                        else:
+                            settings_window['-SETTINGS_OUTPUT-'].update("Invalid API Key or Home directory")
+                    
+                    if settings_event == '-SETTINGS_EXIT-':
                         exit_loop = True
                         settings_window.close()
-                    elif not api_check and home_check:
-                        settings_window['-SETTINGS_OUTPUT-'].update("Invalid API Key")
-                    elif api_check and not home_check:
-                        settings_window['-SETTINGS_OUTPUT-'].update("Invalid Home directory")
-                    else:
-                        settings_window['-SETTINGS_OUTPUT-'].update("Invalid API Key or Home directory")
-                
-                if settings_event == '-SETTINGS_EXIT-':
-                    exit_loop = True
-                    settings_window.close()
 
-                if settings_event == sg.WIN_CLOSED:
-                    pass
+                    if settings_event == sg.WIN_CLOSED:
+                        pass
 
-                if settings_event.startswith("URL"): # Open URLs if they are clicked
-                    url = settings_event.split(" ")[1]
-                    webbrowser.open(url)
-            window['-DOWNLOAD_LOCATION-'].update(value=str(settings['home']) + "/")
-        
-        # Open URLs if they are clicked
-        if event.startswith("URL"):
-            url = event.split(" ")[1]
-            webbrowser.open(url)
+                    if settings_event.startswith("URL"): # Open URLs if they are clicked
+                        url = settings_event.split(" ")[1]
+                        webbrowser.open(url)
+                window['-DOWNLOAD_LOCATION-'].update(value=str(settings['home']) + "/")
+            
+            # Open URLs if they are clicked
+            if event.startswith("URL"):
+                url = event.split(" ")[1]
+                webbrowser.open(url)
 
-        # Open a popup of the contributors in the credits
-        if event == "-CREDITS-":
-            sg.popup_ok('Thank you everyone who has contributed to this project, especially:\n', 
-                'Brian Le: QA, feedback, and motivator', title='Credits', keep_on_top=True)
-
+            # Open a popup of the contributors in the credits
+            if event == "-CREDITS-":
+                sg.popup_ok('Thank you everyone who has contributed to this project, especially:\n', 
+                    'Brian Le: QA, feedback, and motivator', title='Credits', keep_on_top=True)
+        else:
+            exit()
     window.close()
 main()
