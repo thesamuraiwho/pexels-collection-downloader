@@ -43,16 +43,16 @@ MEDIA_VALUES = ["photo_video", "photo", "video"]
 SETTINGS_KEYS_TO_ELEMENT_KEYS = {"pexels_api_key": "-PEXELS API KEY-", "home": "-HOME-"}
 
 # Create the directories
-directories = ["collections_data", "downloads"]
+# directories = ["collections_data", "downloads"]
 parent_dir = os.getcwd()
 
-for i in directories:
-    path = os.path.join(parent_dir, i)
-    if not os.path.exists(path): # If the folder doesn't already exist, create it
-        try:
-            os.mkdir(path)
-        except OSError as error:
-            print(error)
+# for i in directories:
+#     path = os.path.join(parent_dir, i)
+#     if not os.path.exists(path): # If the folder doesn't already exist, create it
+#         try:
+#             os.mkdir(path)
+#         except OSError as error:
+#             print(error)
 
 # Setup settings.json file
 default_settings = {"pexels_api_key": "", "home": f"{parent_dir}"}
