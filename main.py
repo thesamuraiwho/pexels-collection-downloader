@@ -158,7 +158,7 @@ def create_settings_window(settings):
                 [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-SETTINGS_EXIT-"), 
                     sg.Text(key='-SETTINGS_OUTPUT-', text="", text_color="red", size=(30,1))],
                 [sg.Text(key='URL https://www.pexels.com/api/', text='Link to Pexels API', tooltip='https://www.pexels.com/api/', enable_events=True)]]
-    window = sg.Window('Settings', layout, keep_on_top=True, finalize=True, no_titlebar=False)
+    window = sg.Window('Settings', layout, keep_on_top=True, finalize=True)
 
     for key in SETTINGS_KEYS_TO_ELEMENT_KEYS:   # update window with the values read from settings file
         try:
