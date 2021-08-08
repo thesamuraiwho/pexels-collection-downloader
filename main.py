@@ -40,7 +40,7 @@ MEDIA_KEYS = ["-MEDIA_ALL-", "-MEDIA_PHOTOS-", "-MEDIA_VIDEOS-"]
 MEDIA_VALUES = ["photo_video", "photo", "video"]
 
 # "Map" from the settings dictionary keys to the window's element keys
-SETTINGS_KEYS_TO_ELEMENT_KEYS = {"pexels_api_key": "-PEXELS API KEY-", "home": "-HOME-"}
+SETTINGS_KEYS_TO_ELEMENT_KEYS = {"pexels_api_key": "-PEXELS_API_KEY-", "home": "-HOME-"}
 
 # Create the directories
 # directories = ["collections_data", "downloads"]
@@ -151,11 +151,11 @@ def save_settings(settings_file, settings, values):
 def create_settings_window(settings):
     sg.theme(THEME)
 
-    def TextLabel(text): return sg.Text(text+':', justification='r', size=(15,1))
+    def TextLabel(text): return sg.Text(text+':', justification='l', size=(15,1))
 
-    layout = [  [TextLabel('Pexels API key'), sg.Input(key='-PEXELS API KEY-')],
+    layout = [  [TextLabel('Pexels API key'), sg.Input(key='-PEXELS_API_KEY-')],
                 [TextLabel('Home directory'), sg.Input(key='-HOME-'), sg.FolderBrowse(target='-HOME-')],
-                [sg.Button(key='-SAVE-', button_text='Save'), sg.Button(button_text='Exit', key="-SETTINGS_EXIT-"), 
+                [sg.Button(key='-SAVE-', button_text='Save', button_color="#66FA9D"), sg.Button(button_text='Exit', key="-SETTINGS_EXIT-"), 
                     sg.Text(key='-SETTINGS_OUTPUT-', text="", text_color="red", size=(30,1))],
                 [sg.Text(key='URL https://www.pexels.com/api/', text='Link to Pexels API', tooltip='https://www.pexels.com/api/', enable_events=True)]]
     window = sg.Window('Settings', layout, keep_on_top=True, finalize=True)
@@ -199,7 +199,7 @@ def create_main_window(settings):
         #                     [sg.Text(key="-REQ_QUOTA_RESET-", text=f"{datetime.utcfromtimestamp(req_quota_reset).strftime('%Y-%m-%dT%H:%M')}")]]
         mid_col = [[sg.Text("Collection Description")], [sg.HSeparator()],
                     [sg.MLine(size=(20, 10), key='-DESCRIPTION-')]] + [[sg.Text()]] #+ request_panel
-        right_col = media_opt_panel + [[sg.HSeparator()], [sg.HSeparator()]] + [[sg.Text('Collection Photo Quality')],
+        right_col = media_opt_panel + [[sg.HSeparator()]] + [[sg.Text('Collection Photo Quality')],
                         [sg.HSeparator()],
                         [Radio("-QUALITY_ORIGINAL-", "Original", 1, default=True)],
                         [Radio("-QUALITY_2X-", "Large 2x", 1)],
@@ -220,7 +220,7 @@ def create_main_window(settings):
                         file_types=(("ALL Files", "*.*"), ("JPEG Files", "*.jpeg"), ("MP4 Files", "*.mp4"),),
                         initial_folder=str(settings['home']) + "/", enable_events=True)],
                     [sg.MLine(key="-OUTPUT-", size=(74, 5), write_only=True)],
-                    [sg.Button(button_text='Download', key="-DOWNLOAD-"), 
+                    [sg.Button(button_text='Download', key="-DOWNLOAD-", button_color="#66FA9D"), 
                         sg.Button(button_text='Exit', key="-EXIT-"),
                         sg.Button(button_text='Change Settings', key="-CHANGE_SETTINGS-")],
                     [Link('https://github.com/thesamuraiwho', 'Developed by TheSamuraiWho'), 
@@ -252,7 +252,7 @@ def main():
                     event, values = window.read()
                     # print(f"event: {event}\nvalues: {values}")
                     if values:
-                        settings = {"pexels_api_key": f"{values['-PEXELS API KEY-']}", "home": f"{values['-HOME-']}"}
+                        settings = {"pexels_api_key": f"{values['-PEXELS_API_KEY-']}", "home": f"{values['-HOME-']}"}
 
                     if event == '-SAVE-':
                         api_check = check_api_key(settings)
@@ -343,16 +343,17 @@ def main():
                         media_selection = MEDIA_VALUES[i]
                 window['-OUTPUT-'].print(f"Selecting media option: {media_selection}")
             
-            if event == '-CHANGE_SETTINGS-': # Click on change settings button            
+            if event == '-CHANGE_SETTINGS-': # Click on change settings button
+                window.disable()         
                 settings_window = create_settings_window(settings)
                 exit_loop = False
 
                 while not exit_loop:
                     settings_event, settings_values = settings_window.read()
                     if settings_values:
-                        settings = {"pexels_api_key": f"{settings_values['-PEXELS API KEY-']}", 
+                        settings = {"pexels_api_key": f"{settings_values['-PEXELS_API_KEY-']}", 
                             "home": f"{settings_values['-HOME-']}"}
-                    # print(f"event: {settings_event}\nvalues: {settings_values}")
+                    print(f"event: {settings_event}\nvalues: {settings_values}")
 
                     if settings_event == '-SAVE-':
                         api_check = check_api_key(settings)
@@ -363,6 +364,10 @@ def main():
                             save_settings(settings_file, settings, values)
                             exit_loop = True
                             settings_window.close()
+                            window['-DOWNLOAD_LOCATION-'].update(value=str(settings['home']) + "/")
+                            window.enable()
+                            window.bring_to_front()
+
                         elif not api_check and home_check:
                             settings_window['-SETTINGS_OUTPUT-'].update("Invalid API Key")
                         elif api_check and not home_check:
@@ -370,17 +375,15 @@ def main():
                         else:
                             settings_window['-SETTINGS_OUTPUT-'].update("Invalid API Key or Home directory")
                     
-                    if settings_event == '-SETTINGS_EXIT-':
+                    elif settings_event in ('-SETTINGS_EXIT-', sg.WIN_CLOSED):
                         exit_loop = True
                         settings_window.close()
+                        window.enable()
+                        window.bring_to_front()
 
-                    if settings_event == sg.WIN_CLOSED:
-                        pass
-
-                    if settings_event.startswith("URL"): # Open URLs if they are clicked
+                    elif settings_event.startswith("URL"): # Open URLs if they are clicked
                         url = settings_event.split(" ")[1]
                         webbrowser.open(url)
-                window['-DOWNLOAD_LOCATION-'].update(value=str(settings['home']) + "/")
             
             # Open URLs if they are clicked
             if event.startswith("URL"):
