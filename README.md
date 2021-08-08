@@ -34,7 +34,7 @@ This application is built as part of [100DaysOfCode](https://www.100daysofcode.c
 1. Download the source code.
 2. Create a virtual environment and activate it. 
    1. On windows:
-      1. Install virutalenv: `pip isntall virtualenv`
+      1. Install virutalenv: `pip install virtualenv`
       2. Create virtualenv: `virtualenv -p python env`
       3. Activate env: `source env/Scripts/activate`
 3. Install the requirements from the `requirements.txt` file: `pip install -r reqirements.txt`
